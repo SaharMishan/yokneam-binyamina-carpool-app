@@ -1,0 +1,51 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    // Check if the requesting user has isAdmin == true in their profile
+    function isAdmin() {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    match /trips/{tripId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      
+      // Update is allowed for the driver, anyone joining, OR an admin
+      allow update: if isSignedIn() && (
+        resource.data.driverId == request.auth.uid || 
+        isAdmin() ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['passengers', 'availableSeats'])
+      );
+
+      // DELETE: If the document's driverId matches your Auth UID OR you are admin
+      allow delete: if isSignedIn() && (resource.data.driverId == request.auth.uid || isAdmin());
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      // Allow write if it's your own profile OR if you are an admin
+      allow write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+    }
+
+    match /notifications/{notifId} {
+      // Allow users to manage their own notifications
+      allow read, update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      // Allow create if signed in (for invites/requests) OR if admin (for broadcasts)
+      allow create: if isSignedIn();
+    }
+
+    match /reports/{reportId} {
+      // Any signed in user can create a report
+      allow create: if isSignedIn();
+      // Only admins can read, update or delete reports
+      allow read, update, delete: if isAdmin();
+    }
+  }
+}
