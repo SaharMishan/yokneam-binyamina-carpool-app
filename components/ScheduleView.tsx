@@ -97,21 +97,7 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({ onEditTrip }) => {
         });
     }, [trips, selectedDate, activeTab, sortOrder]);
 
-    // Calculate counts (unfiltered by tab) to show badges if needed, or based on day
-    const dayCounts = useMemo(() => {
-        const dayTrips = trips.filter(trip => {
-            const tripDate = trip.departureTime.toDate();
-             return tripDate.getDate() === selectedDate.getDate() &&
-                    tripDate.getMonth() === selectedDate.getMonth() &&
-                    tripDate.getFullYear() === selectedDate.getFullYear();
-        });
-        const offers = dayTrips.filter(t => t.type === 'offer').length;
-        const requests = dayTrips.filter(t => t.type === 'request').length;
-        return { offers, requests };
-    }, [trips, selectedDate]);
-
     const getCountText = () => {
-        // Based on visible filtered trips
         const offers = filteredTrips.filter(t => t.type === 'offer').length;
         const requests = filteredTrips.filter(t => t.type === 'request').length;
         
@@ -191,7 +177,7 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({ onEditTrip }) => {
                  )}
             </div>
 
-            {/* Filters Row - Compact Height (h-10 = 40px) */}
+            {/* Filters Row */}
             <div className="flex gap-2 mb-4 shrink-0 overflow-x-auto pb-2 scrollbar-hide items-center h-10">
                 <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg h-full items-center">
                     <button 
@@ -216,13 +202,12 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({ onEditTrip }) => {
                     </button>
                 </div>
 
-                {/* Sort Dropdown - Perfectly Matched Height & Font */}
                 <div className="relative h-full shrink-0">
                     <div className="absolute top-1/2 -translate-y-1/2 left-2.5 pointer-events-none text-slate-400"><ArrowUpDown size={12} /></div>
                     <select 
                         value={sortOrder} 
                         onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
-                        className="h-full bg-slate-100 dark:bg-slate-800 border-none text-slate-700 dark:text-slate-300 text-xs font-bold rounded-lg pl-8 pr-2 outline-none appearance-none cursor-pointer min-w-[80px] focus:ring-2 focus:ring-indigo-500/20"
+                        className="h-full bg-slate-100 dark:bg-slate-800 border-none text-slate-700 dark:text-slate-300 text-xs font-bold rounded-lg pl-8 pr-2 outline-none appearance-none cursor-pointer min-w-[100px] focus:ring-2 focus:ring-indigo-500/20"
                     >
                         <option value="asc">{t('sort_time_asc')}</option>
                         <option value="desc">{t('sort_time_desc')}</option>
@@ -242,9 +227,8 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({ onEditTrip }) => {
                                 {t('no_trips_subtitle')}
                             </p>
                             
-                            {/* "Post Ride" button for empty state */}
                             <button 
-                                onClick={() => onEditTrip({ type: activeTab } as any)} 
+                                onClick={() => onEditTrip({ type: activeTab === 'all' ? 'offer' : activeTab } as any)} 
                                 className="px-6 py-2.5 bg-indigo-600 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-500/20 flex items-center gap-2 hover:bg-indigo-700 transition-all active:scale-95"
                             >
                                 <Plus size={16} />
@@ -254,7 +238,7 @@ const ScheduleView: React.FC<ScheduleViewProps> = ({ onEditTrip }) => {
                     </div>
                 ) : (
                     <div className="space-y-3 pb-24 w-full">
-                        {filteredTrips.map(trip => <TripCard key={trip.id} trip={trip} onEdit={onEditTrip} />)}
+                        {filteredTrips.map(trip => <TripCard key={trip.id} trip={trip} onEdit={onEditTrip} />) || null}
                     </div>
                 )}
             </div>

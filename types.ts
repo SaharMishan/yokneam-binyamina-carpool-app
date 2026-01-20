@@ -4,12 +4,12 @@ import { Timestamp } from 'firebase/firestore';
 export interface UserProfile {
     uid: string;
     displayName: string | null;
-    displayNameEn?: string | null; // Added English Name
+    displayNameEn?: string | null;
     email: string | null;
     phoneNumber: string;
     photoURL?: string;
-    isAdmin?: boolean; // Admin privilege flag
-    createdAt?: Timestamp; // Added for sorting
+    isAdmin?: boolean;
+    createdAt?: Timestamp;
     privacySettings?: {
         profileVisibility: 'public' | 'private';
         notificationsEnabled: boolean;
@@ -36,38 +36,36 @@ export interface Passenger {
     photo?: string;
     phoneNumber?: string;
     status: PassengerStatus;
-    requestedPickupLocation?: string; // Where the passenger wants to be picked up
+    requestedPickupLocation?: string;
 }
 
 export interface Trip {
     id: string;
-    type: TripType; // 'offer' = Driver offering, 'request' = Passenger seeking
+    type: TripType;
     driverId: string;
     driverName: string;
-    driverNameEn?: string; // Added English Name for the driver on the trip
+    driverNameEn?: string;
     driverPhoto?: string; 
     direction: Direction;
     departureTime: Timestamp;
-    availableSeats: number; // For offer: seats available. For request: seats needed.
+    availableSeats: number;
     pickupLocation?: string;
     passengers: Passenger[];
-    isClosed?: boolean; // Manual override to close a trip even if seats exist
-    
-    // Recurring features
+    isClosed?: boolean;
     isRecurring?: boolean;
-    recurringDays?: number[]; // 0=Sunday, 1=Monday...
+    recurringDays?: number[];
 }
 
 export type NotificationType = 'join' | 'cancel' | 'match' | 'info' | 'request' | 'approved' | 'invite' | 'invite_accepted' | 'invite_rejected' | 'report_status';
 
 export interface AppNotification {
     id: string;
-    userId: string; // The recipient
+    userId: string;
     type: NotificationType;
     title: string;
     message: string;
-    relatedTripId?: string; // The trip ID involved
-    metadata?: any; // Extra data like inviter name, time, etc.
+    relatedTripId?: string;
+    metadata?: any;
     isRead: boolean;
     createdAt: Timestamp;
 }
@@ -89,7 +87,13 @@ export interface ChatMessage {
     tripId: string;
     senderId: string;
     senderName: string;
-    text: string;
+    text?: string;
+    imageUrl?: string;
+    location?: {
+        lat: number;
+        lng: number;
+    };
+    type: 'text' | 'image' | 'location';
     createdAt: Timestamp;
 }
 

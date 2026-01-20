@@ -17,7 +17,7 @@ interface PostTripSheetProps {
 
 const PostTripSheet: React.FC<PostTripSheetProps> = ({ isOpen, onClose, tripToEdit }) => {
     const { user } = useAuth();
-    const { t, dir, language } = useLocalization();
+    const { t, dir } = useLocalization();
     
     const getLocalDateStr = (d: Date) => {
         const year = d.getFullYear();
@@ -66,14 +66,11 @@ const PostTripSheet: React.FC<PostTripSheetProps> = ({ isOpen, onClose, tripToEd
             setShowErrors(false);
             setSeatError(null);
             
-            // If editing an existing trip (has ID) OR creating new with preset type (from TripList empty state)
             if (tripToEdit) {
-                // Determine type: if ID exists use it, if not check if type property was passed (e.g. from empty state button)
                 const initialType = tripToEdit.type || 'offer';
                 setTripType(initialType);
                 
                 if (tripToEdit.id) {
-                    // Full Edit Mode
                     setDirection(tripToEdit.direction);
                     setPickupLocation(tripToEdit.pickupLocation || '');
                     
@@ -90,7 +87,6 @@ const PostTripSheet: React.FC<PostTripSheetProps> = ({ isOpen, onClose, tripToEd
                     setStartDate(getLocalDateStr(date));
                     setDepartureTime(`${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`);
                 } else {
-                    // New Trip Mode (potentially with preset type)
                     setDirection(Direction.YOKNEAM_TO_BINYAMINA);
                     setAvailableSeats(3);
                     setPickupLocation(yokneamLocations[0]);
@@ -99,7 +95,6 @@ const PostTripSheet: React.FC<PostTripSheetProps> = ({ isOpen, onClose, tripToEd
                     setStartDate(getLocalDateStr(new Date()));
                 }
             } else {
-                // Fallback default
                 setTripType('offer');
                 setDirection(Direction.YOKNEAM_TO_BINYAMINA);
                 setAvailableSeats(3);
@@ -114,7 +109,6 @@ const PostTripSheet: React.FC<PostTripSheetProps> = ({ isOpen, onClose, tripToEd
     useEffect(() => {
         if (isOpen && (!tripToEdit || !tripToEdit.id) && !isCustomMode) {
             const locList = direction === Direction.YOKNEAM_TO_BINYAMINA ? yokneamLocations : binyaminaLocations;
-            // Only reset if current location isn't valid for new direction
             if (!locList.includes(pickupLocation)) {
                 setPickupLocation(locList[0]);
             }
@@ -125,9 +119,6 @@ const PostTripSheet: React.FC<PostTripSheetProps> = ({ isOpen, onClose, tripToEd
         e.preventDefault();
         setShowErrors(true);
         if (!user || !departureTime || !startDate || !pickupLocation.trim()) return;
-        if (tripToEdit && tripToEdit.id && tripType === 'offer') {
-            if (availableSeats < getApprovedCount()) { setSeatError(t('error_seats_limit')); return; }
-        }
         setIsSubmitting(true);
         try {
             const [hours, minutes] = departureTime.split(':').map(Number);
@@ -156,7 +147,6 @@ const PostTripSheet: React.FC<PostTripSheetProps> = ({ isOpen, onClose, tripToEd
 
     if (!isOpen) return null;
     
-    // Explicitly format as DD/MM/YYYY
     const d = new Date(startDate);
     const displayDate = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 
@@ -200,7 +190,6 @@ const PostTripSheet: React.FC<PostTripSheetProps> = ({ isOpen, onClose, tripToEd
                                 <button key={num} type="button" onClick={() => setAvailableSeats(num)} className={`flex-1 py-4 rounded-2xl border-2 font-black text-xl transition-all ${availableSeats === num ? 'border-indigo-600 bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'border-slate-100 dark:border-slate-800 text-slate-400'}`}>{num}</button>
                             ))}
                         </div>
-                        {seatError && (<div className="flex items-center gap-1.5 mt-1 text-red-500 animate-fade-in"><AlertCircle size={12} /><span className="text-[10px] font-bold">{seatError}</span></div>)}
                     </div>
 
                     <div className="space-y-2">

@@ -12,7 +12,6 @@ interface ProfileViewProps {
     onEditTrip: (trip: Trip) => void;
 }
 
-// Improved Trip Row Component
 const HistoryItem: React.FC<{ trip: Trip }> = ({ trip }) => {
     const { t, language, dir } = useLocalization();
     
@@ -27,10 +26,9 @@ const HistoryItem: React.FC<{ trip: Trip }> = ({ trip }) => {
     const isRequest = trip.type === 'request';
     const isOffer = trip.type === 'offer';
 
-    // Status Determination
     let statusColor = "text-slate-500";
     let statusIcon = <Clock size={14} />;
-    let statusText = "Active";
+    let statusText = t('status_active');
 
     if (isClosed) {
         statusColor = "text-slate-400";
@@ -48,7 +46,6 @@ const HistoryItem: React.FC<{ trip: Trip }> = ({ trip }) => {
 
     return (
         <div className={`relative flex flex-col p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group`}>
-            {/* Left/Right color bar indicator */}
             <div className={`absolute top-0 bottom-0 ${dir === 'rtl' ? 'right-0' : 'left-0'} w-1.5 ${isRequest ? 'bg-orange-500' : 'bg-indigo-500'}`}></div>
 
             <div className={`flex items-start justify-between ${dir === 'rtl' ? 'mr-3' : 'ml-3'}`}>
@@ -82,7 +79,6 @@ const HistoryItem: React.FC<{ trip: Trip }> = ({ trip }) => {
                      </div>
                  </div>
                  
-                 {/* Fixed: Show passenger count for drivers with forced LTR to prevent slash inversion */}
                  {isOffer && trip.passengers && (
                      <div className="flex items-center gap-1 text-slate-400 text-xs font-medium" dir="ltr">
                          <User size={12} />
@@ -109,7 +105,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onEditTrip }) => {
     const [userTrips, setUserTrips] = useState<Trip[]>([]);
     const [historyTab, setHistoryTab] = useState<'driver' | 'passenger'>('driver');
     
-    // Filtering and Sorting States
     const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
     const [filterDirection, setFilterDirection] = useState<'all' | Direction>('all');
 
@@ -128,7 +123,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onEditTrip }) => {
             
             setStats({ given, taken });
 
-            // Fetch all relevant trips for history list
             const myTrips = allTrips.filter(t => t.driverId === user.uid || t.passengers?.some(p => p.uid === user.uid));
             setUserTrips(myTrips);
         });
@@ -162,10 +156,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onEditTrip }) => {
         }
     };
 
-    // Filter Logic
     const filteredHistory = userTrips
         .filter(t => {
-            // Tab filtering
             if (historyTab === 'driver') {
                 if (!(t.driverId === user?.uid && t.type === 'offer')) return false;
             } else {
@@ -174,7 +166,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onEditTrip }) => {
                 if (!(joined || myRequest)) return false;
             }
 
-            // Direction filtering
             if (filterDirection !== 'all' && t.direction !== filterDirection) return false;
 
             return true;
@@ -252,7 +243,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onEditTrip }) => {
                             <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-1">{language === 'en' && user.displayNameEn ? user.displayNameEn : user.displayName}</h3>
                             <p className="text-indigo-600 dark:text-indigo-400 font-medium mb-3">{user.phoneNumber}</p>
                             
-                            {/* Badges */}
                             <div className="mb-5">
                                 <BadgeDisplay userId={user.uid} size="lg" />
                             </div>
@@ -284,7 +274,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onEditTrip }) => {
                     <button onClick={() => setHistoryTab('passenger')} className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all ${historyTab === 'passenger' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-sm' : 'text-slate-500'}`}>{t('history_tab_passenger')}</button>
                  </div>
 
-                 {/* Filters */}
                  <div className="flex gap-2 mb-4 overflow-x-auto pb-2 scrollbar-hide">
                     <div className="relative min-w-[120px]">
                         <div className="absolute top-2.5 left-2.5 pointer-events-none text-slate-400"><ArrowUpDown size={14} /></div>

@@ -8,44 +8,61 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    // Check if the requesting user has isAdmin == true in their profile
+    // בדיקה אם המשתמש הוא אדמין רגיל (לפי המסמך שלו בדאטה בייס)
     function isAdmin() {
       return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    // *** חוק הברזל של המנהל הראשי ***
+    // הרשאה זו עוקפת כל בדיקה אחרת. אם המייל תואם - יש גישה מלאה.
+    function isMasterAdmin() {
+       return isSignedIn() && request.auth.token.email == 'saharmish93@gmail.com';
     }
 
     match /trips/{tripId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn();
-      
-      // Update is allowed for the driver, anyone joining, OR an admin
-      allow update: if isSignedIn() && (
+      allow update, delete: if isMasterAdmin() || (isSignedIn() && (
         resource.data.driverId == request.auth.uid || 
         isAdmin() ||
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['passengers', 'availableSeats'])
-      );
-
-      // DELETE: If the document's driverId matches your Auth UID OR you are admin
-      allow delete: if isSignedIn() && (resource.data.driverId == request.auth.uid || isAdmin());
+      ));
     }
 
     match /users/{userId} {
       allow read: if isSignedIn();
-      // Allow write if it's your own profile OR if you are an admin
-      allow write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      // המנהל הראשי יכול לערוך כל משתמש (כולל להפוך אותו לאדמין)
+      // משתמש יכול לערוך את עצמו
+      // אדמין רגיל לא יכול לשנות פרטי משתמשים אחרים (למעט אולי מחיקה אם נגדיר)
+      allow write: if isMasterAdmin() || (isSignedIn() && request.auth.uid == userId);
     }
 
     match /notifications/{notifId} {
-      // Allow users to manage their own notifications
-      allow read, update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
-      // Allow create if signed in (for invites/requests) OR if admin (for broadcasts)
+      // Create is open to allow users to trigger notifications for others (e.g. join requests)
+      // Broadcast works because Master Admin writes batch notifications.
       allow create: if isSignedIn();
+      allow read, update, delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isMasterAdmin());
+    }
+    
+    // אוסף חדש להודעות גלובליות (Broadcast)
+    match /system_announcements/{msgId} {
+      allow read: if isSignedIn(); // כולם יכולים לקרוא
+      allow write: if isAdmin() || isMasterAdmin(); // רק מנהלים יכולים לפרסם
     }
 
     match /reports/{reportId} {
-      // Any signed in user can create a report
+      // Anyone signed in can create a report
       allow create: if isSignedIn();
-      // Only admins can read, update or delete reports
-      allow read, update, delete: if isAdmin();
+      // Only admins can view/manage reports
+      allow read, update, delete: if isAdmin() || isMasterAdmin();
+    }
+    
+    match /typing_status/{tripId} {
+      allow read, write: if isSignedIn();
+    }
+    
+    match /messages/{msgId} {
+      allow read, create: if isSignedIn();
     }
   }
 }

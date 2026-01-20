@@ -2,34 +2,43 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../services/firebase';
-import { Trip } from '../types';
+import { Trip, UserProfile } from '../types';
 
 export const useTripContact = (trip: Trip) => {
     const { user } = useAuth();
-    const [driverPhoneNumber, setDriverPhoneNumber] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
+    const [driverProfile, setDriverProfile] = useState<UserProfile | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
-    // Only consider the user a "passenger" if they are in the list AND approved.
-    const isPassenger = user 
-        ? trip.passengers?.some(p => p.uid === user.uid && p.status === 'approved') 
-        : false;
-
+    // תמיד נמשוך את הפרופיל העדכני של בעל הנסיעה כדי לסנכרן שמות ותמונות
     useEffect(() => {
-        const fetchContact = async () => {
-            if (isPassenger && user) {
-                setIsLoading(true);
-                // This check is crucial. The client only attempts to fetch the driver's
-                // private data IF they are a confirmed approved passenger.
-                const driverProfile = await db.getUserProfile(trip.driverId);
-                setDriverPhoneNumber(driverProfile?.phoneNumber || 'Not Found');
-                setIsLoading(false);
-            } else {
-                setDriverPhoneNumber(null);
+        let isMounted = true;
+        const fetchProfile = async () => {
+            setIsLoading(true);
+            try {
+                const profile = await db.getUserProfile(trip.driverId);
+                if (isMounted) {
+                    setDriverProfile(profile);
+                }
+            } catch (error) {
+                console.error("Error fetching driver profile:", error);
+            } finally {
+                if (isMounted) setIsLoading(false);
             }
         };
 
-        fetchContact();
-    }, [isPassenger, trip.driverId, user]);
+        fetchProfile();
+        return () => { isMounted = false; };
+    }, [trip.driverId]);
 
-    return { driverPhoneNumber, isLoading, isPassenger };
+    // בדיקה האם המשתמש הנוכחי הוא נוסע מאושר (לחשיפת טלפון למשל)
+    const isApprovedPassenger = user 
+        ? trip.passengers?.some(p => p.uid === user.uid && p.status === 'approved') 
+        : false;
+
+    return { 
+        driverProfile, 
+        driverPhoneNumber: (isApprovedPassenger || user?.uid === trip.driverId) ? driverProfile?.phoneNumber : null,
+        isLoading, 
+        isApprovedPassenger 
+    };
 };

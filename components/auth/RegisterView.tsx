@@ -2,7 +2,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLocalization } from '../../context/LocalizationContext';
-import { User, Phone, Mail, Lock, AlertCircle, Globe } from 'lucide-react';
+import { auth as authService } from '../../services/firebase';
+import { User, Phone, Mail, Lock, AlertCircle, Globe, Check } from 'lucide-react';
 
 interface RegisterViewProps {
     onSwitchToLogin: () => void;
@@ -12,10 +13,11 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin }) => {
     const { t, dir } = useLocalization();
     const { registerWithEmail } = useAuth();
     const [name, setName] = useState('');
-    const [nameEn, setNameEn] = useState(''); // State for English Name
+    const [nameEn, setNameEn] = useState(''); 
     const [phone, setPhone] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [rememberMe, setRememberMe] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -48,15 +50,20 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin }) => {
 
         setIsSubmitting(true);
         try {
-            // Pass nameEn to the registration function
+            await authService.setPersistence(rememberMe ? 'local' : 'none');
             await registerWithEmail(name, phone, email, password, nameEn);
         } catch (err: any) {
             setIsSubmitting(false);
-            console.error("Registration failed:", err.code, err.message);
+            console.error("Registration failed error code:", err.code);
+            
             if (err.code === 'auth/email-already-in-use') {
                 setError(t('error_email_in_use'));
+            } else if (err.code === 'auth/invalid-email') {
+                setError(t('error_invalid_email'));
+            } else if (err.code === 'auth/weak-password') {
+                setError(t('error_password_short'));
             } else {
-                setError(t('error_generic') + ` (${err.message})`);
+                setError(t('error_generic'));
             }
         }
     };
@@ -100,12 +107,11 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin }) => {
                     <div className={`absolute inset-y-0 start-0 flex items-center ps-4 pointer-events-none transition-colors ${error ? 'text-red-400' : 'text-slate-400 group-focus-within:text-indigo-600'}`}>
                         <Globe className="w-5 h-5" />
                     </div>
-                    {/* Removed dir="ltr" to align placeholder to the right (RTL default) */}
                     <input 
                         type="text" 
                         value={nameEn} 
                         onChange={(e) => { setNameEn(e.target.value); setError(null); }} 
-                        className={`text-start w-full ps-12 p-3.5 bg-white dark:bg-slate-800 border rounded-xl focus:ring-2 transition-all outline-none font-medium text-base text-slate-900 dark:text-white placeholder-slate-400 border-slate-200 dark:border-slate-700 focus:ring-indigo-500/20 focus:border-indigo-600 hover:border-slate-300`} 
+                        className={`text-start w-full ps-12 p-3.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 transition-all outline-none font-medium text-base text-slate-900 dark:text-white placeholder-slate-400 focus:ring-indigo-500/20 focus:border-indigo-600 hover:border-slate-300`} 
                         placeholder={t('full_name_en')}
                     />
                 </div>
@@ -161,11 +167,28 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin }) => {
                         placeholder="••••••••" 
                     />
                 </div>
+
+                <div className="flex items-center gap-2 px-1 py-2 cursor-pointer group select-none">
+                    <label className="flex items-center gap-2 cursor-pointer group select-none">
+                        <div className="relative">
+                            <input 
+                                type="checkbox" 
+                                checked={rememberMe} 
+                                onChange={(e) => setRememberMe(e.target.checked)} 
+                                className="sr-only"
+                            />
+                            <div className={`w-5 h-5 rounded-md border-2 transition-all flex items-center justify-center ${rememberMe ? 'bg-indigo-600 border-indigo-600 shadow-sm shadow-indigo-600/20' : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 group-hover:border-indigo-400'}`}>
+                                {rememberMe && <Check size={14} className="text-white" />}
+                            </div>
+                        </div>
+                        <span className="text-xs font-bold text-slate-600 dark:text-slate-400 group-hover:text-indigo-600 transition-colors">{t('remember_me')}</span>
+                    </label>
+                </div>
                 
                 <button 
                     type="submit" 
                     disabled={isSubmitting} 
-                    className="w-full h-12 mt-4 text-white font-bold bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl hover:shadow-lg shadow-indigo-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                    className="w-full h-12 mt-2 text-white font-bold bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl hover:shadow-lg shadow-indigo-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                 >
                     {isSubmitting ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <span>{t('sign_up')}</span>}
                 </button>

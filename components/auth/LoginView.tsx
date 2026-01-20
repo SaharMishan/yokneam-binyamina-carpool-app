@@ -28,23 +28,15 @@ const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onSwitchToFor
         }
         setIsSubmitting(true);
         try {
-            await authService.setPersistence(rememberMe ? 'local' : 'session');
+            await authService.setPersistence(rememberMe ? 'local' : 'none');
             await signInWithEmail(email, password);
-            // Don't set isSubmitting(false) here on success to prevent UI flicker
         } catch (err: any) {
             setIsSubmitting(false);
-            console.error("Login error code:", err.code);
-            
             const errorCode = err.code;
             if (errorCode === 'auth/user-not-found' || errorCode === 'auth/invalid-email') {
                 setError(t('error_user_not_found'));
             } else if (errorCode === 'auth/wrong-password') {
-                setError(t('error_wrong_password'));
-            } else if (errorCode === 'auth/invalid-credential' || errorCode === 'auth/invalid-login-credentials') {
-                // Handle the specific error code you encountered
-                setError(t('error_invalid_credential')); 
-            } else if (errorCode === 'auth/too-many-requests') {
-                setError("יותר מדי ניסיונות כושלים. נסה שוב מאוחר יותר.");
+                setError('סיסמה שגויה. נסה שוב.');
             } else {
                 setError(t('error_generic'));
             }
@@ -55,7 +47,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onSwitchToFor
         setError(null);
         setIsSubmitting(true);
         try {
-            await authService.setPersistence(rememberMe ? 'local' : 'session');
+            await authService.setPersistence(rememberMe ? 'local' : 'none');
             await signInWithGoogle();
         } catch (err: any) {
             setIsSubmitting(false);
@@ -64,16 +56,16 @@ const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onSwitchToFor
     };
 
     return (
-        <div className="animate-fade-in w-full max-w-sm mx-auto">
+        <div className="animate-fade-in w-full max-w-sm mx-auto flex flex-col min-h-[500px]">
             <div className="flex flex-col items-center mb-10">
-                <div className="w-16 h-16 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/30 mb-6 animate-float-rotate">
+                <div className="w-16 h-16 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/30 mb-6">
                     <CarFront size={32} className="text-white" />
                 </div>
                 
                 <h1 className="text-3xl font-bold text-slate-900 dark:text-white text-center tracking-tight mb-2">
                     {t('app_title')}
                 </h1>
-                <p className="text-slate-500 dark:text-slate-400 text-center text-sm font-medium">
+                <p className="text-slate-500 dark:text-slate-400 text-center text-sm font-medium px-4">
                     {t('login_subtitle')}
                 </p>
             </div>
@@ -141,6 +133,10 @@ const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onSwitchToFor
                 {t('dont_have_account')}{' '}
                 <button onClick={onSwitchToRegister} className="font-bold text-indigo-600 hover:text-indigo-700 transition-colors underline underline-offset-4">{t('sign_up')}</button>
             </p>
+
+            <div className="mt-auto pt-10 text-center opacity-40">
+                <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">© All Rights Reserved to Sahar Mishan</p>
+            </div>
         </div>
     );
 };

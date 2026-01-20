@@ -1,9 +1,8 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { auth, db } from '../services/firebase';
+import { auth, db, dbInstance } from '../services/firebase';
 import { UserProfile } from '../types';
-import { setDoc, doc, getDoc } from 'firebase/firestore';
-import { dbInstance } from '../services/firebase';
+import { setDoc, doc, onSnapshot, getDoc } from 'firebase/firestore';
 
 interface AuthContextType {
     user: UserProfile | null;
@@ -20,8 +19,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Hardcoded list of admin emails for security/initialization
-const ADMIN_EMAILS = ['saharmish93@gmail.com'];
+// מנהל העל הבלעדי של המערכת (Master Admin)
+export const MASTER_EMAIL = 'saharmish93@gmail.com';
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<UserProfile | null>(null);
@@ -29,46 +28,53 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const unsubscribe = auth.onAuthStateChanged(async (currentFirebaseUser) => {
+        let unsubscribeProfile: (() => void) | null = null;
+
+        const unsubscribeAuth = auth.onAuthStateChanged(async (currentFirebaseUser) => {
+            if (unsubscribeProfile) {
+                unsubscribeProfile();
+                unsubscribeProfile = null;
+            }
+
             if (currentFirebaseUser) {
                 setFirebaseUser(currentFirebaseUser);
-                try {
-                    const docRef = doc(dbInstance, 'users', currentFirebaseUser.uid);
-                    const docSnap = await getDoc(docRef);
-                    
-                    const isSystemAdmin = ADMIN_EMAILS.includes(currentFirebaseUser.email || '');
-
-                    if (docSnap.exists()) {
-                        let profile = docSnap.data() as UserProfile;
-                        
-                        // Enforce Admin status if email matches, even if DB says false
-                        if (isSystemAdmin && !profile.isAdmin) {
-                            profile = { ...profile, isAdmin: true };
-                            // Background update to DB
-                            db.updateUserProfile(currentFirebaseUser.uid, { isAdmin: true }).catch(console.error);
-                        }
-
-                        setUser(profile);
-                    } else {
-                        // AUTO-CREATE PROFILE if missing
-                        const newProfile: UserProfile = {
-                            uid: currentFirebaseUser.uid,
-                            displayName: currentFirebaseUser.displayName || 'Guest User',
-                            displayNameEn: null,
+                const isMaster = currentFirebaseUser.email?.toLowerCase() === MASTER_EMAIL.toLowerCase();
+                
+                // BOOTSTRAP: סנכרון מאולץ עבור מנהל העל
+                if (isMaster) {
+                    try {
+                        const masterRef = doc(dbInstance, 'users', currentFirebaseUser.uid);
+                        // אנחנו משתמשים ב-setDoc עם merge:true כדי לוודא ששדה ה-isAdmin תמיד יהיה true בשרת
+                        await setDoc(masterRef, { 
+                            isAdmin: true,
                             email: currentFirebaseUser.email,
-                            phoneNumber: '', // Default empty, user can update later
-                            photoURL: currentFirebaseUser.photoURL || undefined,
-                            isAdmin: isSystemAdmin,
+                            uid: currentFirebaseUser.uid
+                        }, { merge: true });
+                    } catch (e) {
+                        console.error("Master Admin bootstrap failed", e);
+                    }
+                }
+
+                const docRef = doc(dbInstance, 'users', currentFirebaseUser.uid);
+                unsubscribeProfile = onSnapshot(docRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        setUser({ ...docSnap.data(), uid: docSnap.id } as UserProfile);
+                    } else {
+                        const shell: UserProfile = {
+                            uid: currentFirebaseUser.uid,
+                            displayName: currentFirebaseUser.displayName || 'Guest',
+                            email: currentFirebaseUser.email,
+                            phoneNumber: '',
+                            isAdmin: isMaster, 
                             privacySettings: { profileVisibility: 'public', notificationsEnabled: true }
                         };
-                        await setDoc(docRef, newProfile);
-                        setUser(newProfile);
+                        setUser(shell);
                     }
-                } catch (e) {
-                    console.error("Failed to fetch/create profile", e);
-                } finally {
                     setLoading(false);
-                }
+                }, (error) => {
+                    console.error("Profile Sync Error", error);
+                    setLoading(false);
+                });
             } else {
                 setFirebaseUser(null);
                 setUser(null);
@@ -76,80 +82,52 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             }
         });
 
-        return () => unsubscribe();
+        return () => {
+            unsubscribeAuth();
+            if (unsubscribeProfile) unsubscribeProfile();
+        };
     }, []);
 
     const signInWithGoogle = async () => {
-        try {
-            await auth.signInWithGoogle();
-        } catch (error) {
-            console.error(error);
-            throw error;
-        }
+        await auth.signInWithGoogle();
     };
     
     const signInWithEmail = async (email: string, pass: string) => {
-        try {
-            await auth.signInWithEmailAndPassword(email, pass);
-        } catch (error) {
-            console.error(error);
-            throw error; 
+        await auth.signInWithEmailAndPassword(email, pass);
+    };
+
+    const registerWithEmail = async (name: string, phone: string, email: string, pass: string, nameEn?: string) => {
+        const { user: newFirebaseUser } = await auth.createUserWithEmailAndPassword(email, pass) as { user: any };
+        if (newFirebaseUser) {
+            const isMaster = email.toLowerCase() === MASTER_EMAIL.toLowerCase();
+            const newUserProfile: UserProfile = {
+                uid: newFirebaseUser.uid,
+                displayName: name,
+                displayNameEn: nameEn || null,
+                email: email,
+                phoneNumber: phone,
+                isAdmin: isMaster,
+                privacySettings: { profileVisibility: 'public', notificationsEnabled: true }
+            };
+            await db.createUserProfile(newUserProfile);
         }
     };
 
     const completeUserProfile = async (phoneNumber: string, fullName?: string, fullNameEn?: string) => {
         if (!firebaseUser) return;
-        const data: Partial<UserProfile> = { phoneNumber };
-        if (fullName) data.displayName = fullName;
-        if (fullNameEn) data.displayNameEn = fullNameEn;
-        
-        await db.updateUserProfile(firebaseUser.uid, data);
-        setUser(prev => prev ? ({ ...prev, ...data }) : null);
-    };
-
-    const registerWithEmail = async (name: string, phone: string, email: string, pass: string, nameEn?: string) => {
-        try {
-            const { user: newFirebaseUser } = await auth.createUserWithEmailAndPassword(email, pass) as { user: any };
-            if (newFirebaseUser) {
-                const isSystemAdmin = ADMIN_EMAILS.includes(email);
-                
-                // Manually create profile immediately after registration
-                const newUserProfile: UserProfile = {
-                    uid: newFirebaseUser.uid,
-                    displayName: name,
-                    displayNameEn: nameEn || null,
-                    email: newFirebaseUser.email,
-                    phoneNumber: phone,
-                    isAdmin: isSystemAdmin,
-                    privacySettings: { profileVisibility: 'public', notificationsEnabled: true }
-                };
-                await db.createUserProfile(newUserProfile);
-                setUser(newUserProfile);
-            }
-        } catch (error) {
-            console.error(error);
-            throw error; 
-        }
+        const update: any = { phoneNumber };
+        if (fullName) update.displayName = fullName;
+        if (fullNameEn) update.displayNameEn = fullNameEn;
+        await db.updateUserProfile(firebaseUser.uid, update);
     };
 
     const updateProfile = async (data: Partial<UserProfile>) => {
         if (!user) return;
-        try {
-            await db.updateUserProfile(user.uid, data);
-            setUser(prev => prev ? ({ ...prev, ...data }) : null);
-        } catch (error) {
-            console.error(error);
-            throw error;
-        }
+        await db.updateUserProfile(user.uid, data);
     };
 
     const sendPasswordReset = async (email: string) => {
-        try {
-            await auth.sendPasswordResetEmail(email);
-        } catch (error) {
-            console.error(error);
-            throw error;
-        }
+        await auth.sendPasswordResetEmail(email);
     };
 
     const signOut = async () => {
@@ -165,8 +143,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
 export const useAuth = () => {
     const context = useContext(AuthContext);
-    if (context === undefined) {
-        throw new Error('useAuth must be used within an AuthProvider');
-    }
+    if (context === undefined) throw new Error('useAuth must be used within an AuthProvider');
     return context;
 };

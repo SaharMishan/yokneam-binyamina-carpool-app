@@ -4,15 +4,13 @@ import { useLocalization } from '../../context/LocalizationContext';
 import { CarFront, MapPin, Clock, Leaf, Shield, MessageCircle, Users } from 'lucide-react';
 
 const HeroSection: React.FC = () => {
-    const { t } = useLocalization();
+    const { t, language } = useLocalization();
 
     return (
         <div className="hidden md:flex flex-col justify-center items-center h-full relative overflow-hidden bg-slate-900 w-full px-8">
             
-            {/* --- Background Effects --- */}
             <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 via-slate-900 to-blue-950 z-0"></div>
             
-            {/* Abstract Grid Pattern */}
             <div className="absolute inset-0 opacity-10" 
                  style={{ 
                      backgroundImage: 'radial-gradient(#6366f1 1px, transparent 1px)', 
@@ -20,29 +18,24 @@ const HeroSection: React.FC = () => {
                  }}>
             </div>
 
-            {/* Glowing Orbs */}
             <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-purple-500/20 rounded-full blur-[100px] animate-pulse"></div>
             <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-blue-500/20 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '2s' }}></div>
 
-            {/* --- Main Composition Container --- */}
             <div className="relative z-10 w-full max-w-lg aspect-square flex items-center justify-center">
                 
-                {/* 1. Central Hero Element (The Car) */}
                 <div className="absolute z-20 animate-pop-in">
                     <div className="w-48 h-48 bg-gradient-to-tr from-indigo-600 to-blue-500 rounded-[2rem] shadow-2xl shadow-indigo-500/40 flex items-center justify-center transform hover:scale-105 transition-transform duration-300 border-4 border-white/10 backdrop-blur-sm animate-float">
                         <CarFront size={96} className="text-white drop-shadow-md" />
                     </div>
                 </div>
 
-                {/* 2. Floating Elements (Surrounding Stickers) */}
-                
                 {/* Top Right: Location (Destination) */}
                 <div className="absolute top-0 right-10 animate-pop-in-delay-1 z-10">
                     <div className="w-24 h-24 bg-white/10 backdrop-blur-md rounded-2xl flex flex-col items-center justify-center border border-white/20 shadow-xl animate-float-delayed">
                         <div className="w-10 h-10 bg-rose-500 rounded-full flex items-center justify-center mb-2 shadow-lg shadow-rose-500/30">
                             <MapPin size={20} className="text-white" />
                         </div>
-                        <span className="text-white text-[10px] font-bold uppercase tracking-wider opacity-80">Binyamina</span>
+                        <span className="text-white text-[10px] font-bold uppercase tracking-wider opacity-80">{t('city_binyamina')}</span>
                     </div>
                 </div>
 
@@ -52,7 +45,7 @@ const HeroSection: React.FC = () => {
                         <div className="w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center mb-2 shadow-lg shadow-amber-500/30">
                             <MapPin size={20} className="text-white" />
                         </div>
-                        <span className="text-white text-[10px] font-bold uppercase tracking-wider opacity-80">Yokneam</span>
+                        <span className="text-white text-[10px] font-bold uppercase tracking-wider opacity-80">{t('city_yokneam')}</span>
                     </div>
                 </div>
 
@@ -74,7 +67,7 @@ const HeroSection: React.FC = () => {
                 <div className="absolute top-1/2 left-[-20px] -translate-y-1/2 animate-pop-in-delay-2 z-10">
                     <div className="bg-white text-indigo-900 px-4 py-2 rounded-xl shadow-xl flex items-center gap-2 font-bold text-sm transform -rotate-6 hover:rotate-0 transition-transform cursor-default animate-float">
                         <Users size={16} className="text-indigo-600" />
-                        <span>Community</span>
+                        <span>{t('community')}</span>
                     </div>
                 </div>
 
@@ -85,7 +78,6 @@ const HeroSection: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Chat Bubble decoration */}
                  <div className="absolute bottom-0 left-1/2 animate-pop-in-delay-1 z-30">
                     <div className="bg-white text-slate-800 p-2 rounded-t-xl rounded-br-xl rounded-bl-none shadow-lg transform translate-y-8 -translate-x-12 animate-bounce-slow">
                         <MessageCircle size={20} className="fill-indigo-100 text-indigo-600" />
@@ -94,7 +86,6 @@ const HeroSection: React.FC = () => {
 
             </div>
 
-            {/* --- Text Content --- */}
             <div className="relative z-40 text-center mt-8 max-w-lg">
                 <h1 className="text-4xl lg:text-5xl font-black text-white mb-4 drop-shadow-xl animate-slide-up">
                     {t('app_title')}
@@ -109,7 +100,6 @@ const HeroSection: React.FC = () => {
                 </div>
             </div>
 
-            {/* Custom Animations Styles */}
             <style>{`
                 @keyframes float {
                     0%, 100% { transform: translateY(0px); }
@@ -132,12 +122,10 @@ const HeroSection: React.FC = () => {
                     0%, 100% { transform: translateY(0) translateX(-3rem); }
                     50% { transform: translateY(-5px) translateX(-3rem); }
                 }
-                
                 .animate-float { animation: float 6s ease-in-out infinite; }
                 .animate-float-delayed { animation: float-delayed 5s ease-in-out infinite 1s; }
                 .animate-float-slow { animation: float-slow 8s ease-in-out infinite 0.5s; }
                 .animate-bounce-slow { animation: bounce-slow 3s ease-in-out infinite; }
-                
                 .animate-pop-in { animation: pop-in 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
                 .animate-pop-in-delay-1 { opacity: 0; animation: pop-in 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.2s forwards; }
                 .animate-pop-in-delay-2 { opacity: 0; animation: pop-in 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.4s forwards; }

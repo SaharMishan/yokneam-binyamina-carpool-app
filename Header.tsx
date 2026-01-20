@@ -5,7 +5,7 @@ import { useNotifications } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../services/firebase';
 import { Direction } from '../types';
-import { Menu, CarFront, Moon, Sun, Globe, Bell, Trash2, Check, X } from 'lucide-react';
+import { Menu, CarFront, Moon, Sun, Globe, Bell, Trash2, Check, X, Megaphone } from 'lucide-react';
 
 interface HeaderProps {
     onMenuClick: () => void;
@@ -16,7 +16,7 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ onMenuClick, onLogoClick, onNavigateToTrip }) => {
     const { t, language, toggleLanguage, isDarkMode, toggleTheme, dir } = useLocalization();
     const { user } = useAuth();
-    const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, clearAllNotifications } = useNotifications();
+    const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, clearAllNotifications, setActiveSystemMessage } = useNotifications();
     const [showNotifications, setShowNotifications] = useState(false);
     const notifRef = useRef<HTMLDivElement>(null);
     const [processingNotifId, setProcessingNotifId] = useState<string | null>(null);
@@ -33,22 +33,20 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onLogoClick, onNavigateToT
 
     const NotificationItem: React.FC<{ notif: any }> = ({ notif }) => {
         let message = notif.message;
-        
         if (message && message.includes('|')) {
             const parts = message.split('|');
-            const key = parts[0];
-            const param = parts[1];
-            message = t(key).replace('{name}', param);
+            message = t(parts[0]).replace('{name}', parts[1]);
         } else if (notif.type === 'invite' && notif.metadata) {
-            message = t('notif_invite_msg')
-                .replace('{name}', notif.metadata.driverName)
-                .replace('{direction}', t(notif.metadata.directionKey))
-                .replace('{time}', notif.metadata.time);
-        } else {
-            message = t(message) || message;
-        }
+            message = t('notif_invite_msg').replace('{name}', notif.metadata.driverName).replace('{direction}', t(notif.metadata.directionKey)).replace('{time}', notif.metadata.time);
+        } else { message = t(message) || message; }
 
         const handleNotifClick = () => {
+            if (notif.type === 'info') {
+                setActiveSystemMessage(notif);
+                setShowNotifications(false);
+                return;
+            }
+            
             markAsRead(notif.id);
             if (notif.relatedTripId && notif.metadata?.direction) {
                 onNavigateToTrip(notif.relatedTripId, notif.metadata.direction);
@@ -67,32 +65,23 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onLogoClick, onNavigateToT
                     markAsRead(notif.id);
                 } else if (notif.type === 'invite') {
                     if (action === 'approve') {
-                         await db.acceptTripInvitation(notif.relatedTripId, {
-                            uid: user!.uid,
-                            name: user!.displayName || 'Guest',
-                            photo: user!.photoURL || '',
-                            phoneNumber: user!.phoneNumber || '',
-                            status: 'approved'
-                        }, notif.id);
-                    } else {
-                        await db.rejectTripInvitation(notif.relatedTripId, user!.displayName || 'Guest', notif.id);
-                    }
+                         await db.acceptTripInvitation(notif.relatedTripId, { uid: user!.uid, name: user!.displayName || 'Guest', photo: user!.photoURL || '', phoneNumber: user!.phoneNumber || '', status: 'approved' }, notif.id);
+                    } else { await db.rejectTripInvitation(notif.relatedTripId, user!.displayName || 'Guest', notif.id); }
                 }
             } catch (err) { console.error(err); }
             finally { setProcessingNotifId(null); }
         };
 
         const isActionable = (notif.type === 'request' || notif.type === 'invite') && !notif.isRead;
-
-        const handleDelete = (e: React.MouseEvent) => {
-            e.stopPropagation();
-            deleteNotification(notif.id);
-        };
+        const isInfo = notif.type === 'info';
 
         return (
             <div onClick={handleNotifClick} className={`p-4 border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer transition-all relative group ${!notif.isRead ? 'bg-indigo-50/50 dark:bg-indigo-900/10' : ''}`}>
                 <div className="flex justify-between items-start mb-1">
-                    <h4 className={`text-sm ${!notif.isRead ? 'font-bold text-indigo-700 dark:text-indigo-400' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>{t(notif.title)}</h4>
+                    <div className="flex items-center gap-2">
+                        {isInfo && <Megaphone size={14} className="text-indigo-600" />}
+                        <h4 className={`text-sm ${!notif.isRead ? 'font-bold text-indigo-700 dark:text-indigo-400' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>{t(notif.title)}</h4>
+                    </div>
                     <span className="text-[10px] text-slate-400">{notif.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute:'2-digit' })}</span>
                 </div>
                 <p className="text-xs text-slate-500 dark:text-slate-400 pr-4 leading-relaxed font-medium">{message}</p>
@@ -103,7 +92,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onLogoClick, onNavigateToT
                     </div>
                 ) : (
                     <div className="absolute bottom-3 end-3 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-                        <button onClick={handleDelete} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"><Trash2 size={14} /></button>
+                        <button onClick={(e) => { e.stopPropagation(); deleteNotification(notif.id); }} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"><Trash2 size={14} /></button>
                     </div>
                 )}
             </div>
@@ -111,26 +100,19 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onLogoClick, onNavigateToT
     };
 
     return (
-        <header className="fixed top-0 left-0 right-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/60 h-16 z-30 transition-all shadow-sm">
+        <header className="fixed top-0 left-0 right-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/60 h-16 z-[60] transition-all shadow-sm">
             <div className="w-full px-4 sm:px-6 h-full flex items-center justify-between">
                 <div className="flex items-center gap-3 cursor-pointer group" onClick={onLogoClick}>
                     <div className="bg-gradient-to-tr from-blue-600 to-indigo-600 text-white p-2 rounded-xl shadow-md group-hover:rotate-6 transition-transform"><CarFront size={20} /></div>
                     <h1 className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-800 to-slate-600 dark:from-white dark:to-slate-300 hidden sm:block">{t('app_title')}</h1>
                 </div>
-                
                 <div className="flex items-center gap-2">
                     <div className="relative" ref={notifRef}>
                         <button onClick={() => setShowNotifications(!showNotifications)} className="p-2 rounded-full text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-all relative">
                             <Bell size={20} />
                             {unreadCount > 0 && <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-slate-900 animate-pulse"></span>}
                         </button>
-                        
                         {showNotifications && (
-                            /* 
-                                Improved positioning:
-                                Mobile (<md): 'fixed' inset-x-4 top-16 for a full floating card look.
-                                Desktop (>=md): 'absolute' top-12 left/right-0 anchored to the bell.
-                            */
                             <div className={`fixed inset-x-4 top-16 md:absolute md:inset-auto md:top-12 ${dir === 'rtl' ? 'md:left-0' : 'md:right-0'} md:w-[400px] max-h-[80vh] bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-700 overflow-hidden flex flex-col animate-fade-in z-[100]`}>
                                 <div className="p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex flex-row-reverse justify-between items-center shrink-0">
                                     <h3 className="text-sm font-bold text-slate-800 dark:text-white">{t('notifications_title')}</h3>
@@ -140,14 +122,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onLogoClick, onNavigateToT
                                     </div>
                                 </div>
                                 <div className="overflow-y-auto flex-1 scrollbar-hide overscroll-contain">
-                                    {notifications.length === 0 ? (
-                                        <div className="p-12 text-center flex flex-col items-center gap-3">
-                                            <div className="w-12 h-12 bg-slate-50 dark:bg-slate-700/50 rounded-full flex items-center justify-center text-slate-300"><Bell size={24} /></div>
-                                            <span className="text-sm font-medium text-slate-400">{t('no_notifications')}</span>
-                                        </div>
-                                    ) : (
-                                        notifications.map(n => <NotificationItem key={n.id} notif={n} />)
-                                    )}
+                                    {notifications.length === 0 ? (<div className="p-12 text-center flex flex-col items-center gap-3"><div className="w-12 h-12 bg-slate-50 dark:bg-slate-700/50 rounded-full flex items-center justify-center text-slate-300"><Bell size={24} /></div><span className="text-sm font-medium text-slate-400">{t('no_notifications')}</span></div>) : (notifications.map(n => <NotificationItem key={n.id} notif={n} />))}
                                 </div>
                             </div>
                         )}

@@ -2,7 +2,6 @@
   "name": "Yokneam-Binyamina Carpool",
   "description": "A secure, mobile-first carpooling application for commuters between Yokneam and Binyamina. Features include Google authentication, real-time trip listings, and a secure contact reveal system for confirmed passengers, with multi-language support.",
   "requestFramePermissions": [
-    "camera",
-    "microphone"
+    "geolocation"
   ]
 }

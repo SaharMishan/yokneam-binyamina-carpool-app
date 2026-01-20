@@ -29,7 +29,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose }) => {
         try {
             await db.submitReport({
                 userId: user.uid,
-                userName: user.displayName || 'Unknown',
+                userName: user.displayName || 'אורח',
                 userPhoto: user.photoURL,
                 type,
                 description: description.trim()
@@ -53,7 +53,7 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose }) => {
     return (
         <Portal>
             <div className="fixed inset-0 z-[200] bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
-                <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2rem] shadow-2xl overflow-hidden animate-scale-in border border-slate-100 dark:border-slate-800" onClick={e => e.stopPropagation()}>
+                <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2.5rem] shadow-2xl overflow-hidden animate-scale-in border border-slate-100 dark:border-slate-800" onClick={e => e.stopPropagation()}>
                     {isSuccess ? (
                         <div className="p-10 flex flex-col items-center justify-center text-center">
                             <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mb-6 animate-float">

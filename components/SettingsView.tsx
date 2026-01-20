@@ -98,7 +98,7 @@ const SettingsView: React.FC = () => {
                  <SettingItem 
                     icon={Shield} 
                     title={t('settings_privacy')} 
-                    desc={isPublic ? 'פרופיל ציבורי' : 'פרופיל פרטי'} 
+                    desc={isPublic ? t('settings_privacy_public') : t('settings_privacy_private')} 
                     action={<Toggle checked={isPublic} onChange={handlePrivacyToggle} />} 
                  />
 
@@ -107,7 +107,7 @@ const SettingsView: React.FC = () => {
                  <SettingItem 
                     icon={Moon} 
                     title={t('settings_theme')} 
-                    desc={isDarkMode ? 'מצב כהה' : 'מצב בהיר'} 
+                    desc={isDarkMode ? t('settings_theme_dark') : t('settings_theme_light')} 
                     action={<Toggle checked={isDarkMode} onChange={toggleTheme} />} 
                  />
 
@@ -123,14 +123,14 @@ const SettingsView: React.FC = () => {
                 <SettingItem 
                     icon={Car}
                     title={t('my_car_title')}
-                    desc={user?.carDetails ? `${user.carDetails.model} (${user.carDetails.plateNumber})` : 'ניהול פרטי רכב'}
+                    desc={user?.carDetails ? `${user.carDetails.model} (${user.carDetails.plateNumber})` : t('manage_car_details')}
                     onClick={() => setIsCarModalOpen(true)}
                 />
 
                 <SettingItem 
                     icon={FileText}
                     title={t('terms_title')}
-                    desc="משפטי ופרטיות"
+                    desc={t('terms_subtitle')}
                     onClick={() => setIsTermsModalOpen(true)}
                 />
 
@@ -142,7 +142,7 @@ const SettingsView: React.FC = () => {
                     <span>{t('logout')}</span>
                 </button>
                 
-                <p className="text-center text-xs text-slate-400 pt-4">גרסה 1.5.5</p>
+                <p className="text-center text-xs text-slate-400 pt-4">גרסה 1.8.5</p>
              </div>
         </div>
     );

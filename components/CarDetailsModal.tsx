@@ -107,7 +107,7 @@ const CarDetailsModal: React.FC<CarDetailsModalProps> = ({ isOpen, onClose }) =>
                         <div className="pt-2">
                             <button type="submit" disabled={isSaving} className="w-full h-14 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50">
                                 {isSaving ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />} 
-                                {t('save_profile')}
+                                {t('profile_save')}
                             </button>
                         </div>
                     </form>
