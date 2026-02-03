@@ -1,5 +1,7 @@
 
-import { initializeApp, getApp, getApps } from "firebase/app";
+// Fix: Use namespace import for firebase/app to resolve missing named exports error
+import * as firebaseApp from "firebase/app";
+const { initializeApp, getApp, getApps } = firebaseApp;
 import { 
     getAuth, 
     signInWithPopup, 
@@ -40,16 +42,20 @@ import {
     serverTimestamp,
     deleteField
 } from "firebase/firestore";
-import { Trip, UserProfile, Direction, AppNotification, NotificationType, Passenger, Report, ChatMessage } from '../types';
+import { Trip, UserProfile, Direction, AppNotification, Passenger, Report, ChatMessage } from '../types';
 
+/**
+ * הגדרות Firebase.
+ * שימוש ב-process.env עם ערכי Fallback מהנתונים שסיפקת כדי להבטיח פעולה תקינה בכל סביבה.
+ */
 const firebaseConfig = {
-  apiKey: "AIzaSyDPMvgiA-BMTfjpns7CYsfNFrU5PWqnJGw",
-  authDomain: "carpool-yokneam.firebaseapp.com",
-  projectId: "carpool-yokneam",
-  storageBucket: "carpool-yokneam.firebasestorage.app",
-  messagingSenderId: "374315181940",
-  appId: "1:374315181940:web:e322c995e8c3b25e3eee21",
-  measurementId: "G-LB4XC4NRZQ"
+  apiKey: (process.env as any).VITE_FIREBASE_API_KEY || "AIzaSyDPMvgiA-BMTfjpns7CYsfNFrU5PWqnJGw",
+  authDomain: (process.env as any).VITE_FIREBASE_AUTH_DOMAIN || "carpool-yokneam.firebaseapp.com",
+  projectId: (process.env as any).VITE_FIREBASE_PROJECT_ID || "carpool-yokneam",
+  storageBucket: (process.env as any).VITE_FIREBASE_STORAGE_BUCKET || "carpool-yokneam.firebasestorage.app",
+  messagingSenderId: (process.env as any).VITE_FIREBASE_MESSAGING_SENDER_ID || "374315181940",
+  appId: (process.env as any).VITE_FIREBASE_APP_ID || "1:374315181940:web:e322c995e8c3b25e3eee21",
+  measurementId: (process.env as any).VITE_FIREBASE_MEASUREMENT_ID || "G-LB4XC4NRZQ"
 };
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
@@ -57,6 +63,10 @@ const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 export const authInstance = getAuth(app);
 export const dbInstance = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
+
+googleProvider.setCustomParameters({
+  prompt: 'select_account'
+});
 
 export const auth = {
     onAuthStateChanged: (callback: (user: User | null) => void) => {
@@ -112,6 +122,14 @@ export const db = {
             await updateDoc(docRef, data);
         } catch (error) {
             console.error("Error updating user profile:", error);
+            throw error;
+        }
+    },
+    deleteUserProfile: async (uid: string): Promise<void> => {
+        try {
+            await deleteDoc(doc(dbInstance, 'users', uid));
+        } catch (error) {
+            console.error("Error deleting user profile:", error);
             throw error;
         }
     },
@@ -179,24 +197,7 @@ export const db = {
                 passengers[idx] = { ...passengers[idx], status: 'approved' };
                 transaction.update(tripRef, { passengers, availableSeats: increment(-1) });
 
-                // AUTOMATICALLY CLOSE PASSENGER'S OWN REQUEST FOR THIS DAY/DIRECTION
-                const tripsRef = collection(dbInstance, 'trips');
-                const q = query(tripsRef, 
-                    where('driverId', '==', passengerId), 
-                    where('type', '==', 'request'),
-                    where('direction', '==', data.direction)
-                );
-                
-                const userRequestsSnap = await getDocs(q);
-                userRequestsSnap.forEach(requestDoc => {
-                    const reqData = requestDoc.data();
-                    const reqDate = reqData.departureTime.toDate().toDateString();
-                    const tripDate = data.departureTime.toDate().toDateString();
-                    if (reqDate === tripDate) {
-                        transaction.delete(doc(dbInstance, 'trips', requestDoc.id));
-                    }
-                });
-
+                // Notify passenger
                 const notifRef = doc(collection(dbInstance, 'notifications'));
                 transaction.set(notifRef, {
                     userId: passengerId,
@@ -216,15 +217,84 @@ export const db = {
             const tripRef = doc(dbInstance, 'trips', tripId);
             await runTransaction(dbInstance, async (transaction) => {
                 const tripDoc = await transaction.get(tripRef);
+                if (!tripDoc.exists()) throw new Error("Trip does not exist");
                 const data = tripDoc.data() as Trip;
-                const updatedPassengers = (data.passengers || []).filter(p => p.uid !== passengerId);
-                transaction.update(tripRef, { passengers: updatedPassengers });
+                const passengers = data.passengers.filter(p => p.uid !== passengerId);
+                transaction.update(tripRef, { passengers });
+
                 const notifRef = doc(collection(dbInstance, 'notifications'));
                 transaction.set(notifRef, {
                     userId: passengerId,
-                    type: 'cancel',
+                    type: 'info',
                     title: 'notif_rejected_title',
                     message: 'notif_rejected_msg',
+                    relatedTripId: tripId,
+                    isRead: false,
+                    createdAt: serverTimestamp()
+                });
+            });
+        } catch (error) { throw error; }
+    },
+    acceptTripInvitation: async (tripId: string, passenger: Passenger, notifId: string): Promise<void> => {
+        try {
+            const tripRef = doc(dbInstance, 'trips', tripId);
+            await runTransaction(dbInstance, async (transaction) => {
+                const tripDoc = await transaction.get(tripRef);
+                if (!tripDoc.exists()) throw new Error("Trip does not exist");
+                const data = tripDoc.data() as Trip;
+                if (data.availableSeats <= 0) throw new Error("Trip is full");
+                
+                const passengers = [...(data.passengers || []), passenger];
+                transaction.update(tripRef, { 
+                    passengers, 
+                    availableSeats: increment(-1) 
+                });
+                
+                transaction.update(doc(dbInstance, 'notifications', notifId), { isRead: true });
+
+                const notifRef = doc(collection(dbInstance, 'notifications'));
+                transaction.set(notifRef, {
+                    userId: data.driverId,
+                    type: 'info',
+                    title: 'invite_accepted',
+                    message: `notif_invite_accepted|${passenger.name}`,
+                    relatedTripId: tripId,
+                    isRead: false,
+                    createdAt: serverTimestamp()
+                });
+            });
+        } catch (error) { throw error; }
+    },
+    rejectTripInvitation: async (tripId: string, passengerName: string, notifId: string): Promise<void> => {
+        try {
+            await updateDoc(doc(dbInstance, 'notifications', notifId), { isRead: true });
+        } catch (error) { throw error; }
+    },
+    leaveTrip: async (tripId: string, userId: string): Promise<void> => {
+        try {
+            const tripRef = doc(dbInstance, 'trips', tripId);
+            await runTransaction(dbInstance, async (transaction) => {
+                const tripDoc = await transaction.get(tripRef);
+                if (!tripDoc.exists()) throw new Error("Trip does not exist");
+                const data = tripDoc.data() as Trip;
+                
+                const passenger = data.passengers.find(p => p.uid === userId);
+                if (!passenger) return;
+
+                const isApproved = passenger.status === 'approved';
+                const newPassengers = data.passengers.filter(p => p.uid !== userId);
+                
+                const updates: any = { passengers: newPassengers };
+                if (isApproved) updates.availableSeats = increment(1);
+                
+                transaction.update(tripRef, updates);
+
+                const notifRef = doc(collection(dbInstance, 'notifications'));
+                transaction.set(notifRef, {
+                    userId: data.driverId,
+                    type: 'info',
+                    title: 'notif_passenger_left_title',
+                    message: `notif_passenger_left_msg|${passenger.name}`,
                     relatedTripId: tripId,
                     isRead: false,
                     createdAt: serverTimestamp()
@@ -235,277 +305,166 @@ export const db = {
     cancelTrip: async (tripId: string): Promise<void> => {
         try {
             const tripRef = doc(dbInstance, 'trips', tripId);
-            const tripSnap = await getDoc(tripRef);
-            if (tripSnap.exists()) {
-                const data = tripSnap.data() as Trip;
-                const batch = writeBatch(dbInstance);
-                if (data.passengers) {
-                    data.passengers.forEach(p => {
-                        if (p.status === 'approved') {
-                            const notifRef = doc(collection(dbInstance, 'notifications'));
-                            batch.set(notifRef, {
-                                userId: p.uid,
-                                type: 'cancel',
-                                title: 'notif_trip_cancelled_title',
-                                message: 'notif_trip_cancelled_msg',
-                                relatedTripId: tripId,
-                                isRead: false,
-                                createdAt: serverTimestamp()
-                            });
-                        }
-                    });
-                }
-                batch.delete(tripRef);
-                await batch.commit();
-            }
+            const tripDoc = await getDoc(tripRef);
+            if (!tripDoc.exists()) return;
+            const tripData = tripDoc.data() as Trip;
+
+            const batch = writeBatch(dbInstance);
+            batch.delete(tripRef);
+
+            tripData.passengers?.forEach(p => {
+                const notifRef = doc(collection(dbInstance, 'notifications'));
+                batch.set(notifRef, {
+                    userId: p.uid,
+                    type: 'cancel',
+                    title: 'notif_trip_cancelled_title',
+                    message: 'notif_trip_cancelled_msg',
+                    relatedTripId: tripId,
+                    isRead: false,
+                    createdAt: serverTimestamp()
+                });
+            });
+
+            await batch.commit();
         } catch (error) { throw error; }
     },
-    getAllUsers: async (): Promise<UserProfile[]> => {
+    dismissMatch: async (uid: string, tripId: string): Promise<void> => {
         try {
-            const snapshot = await getDocs(collection(dbInstance, 'users'));
-            return snapshot.docs.map(doc => {
-                const data = doc.data() as UserProfile;
-                return { ...data, uid: doc.id };
+            const userRef = doc(dbInstance, 'users', uid);
+            await updateDoc(userRef, {
+                dismissedMatchIds: arrayUnion(tripId)
             });
-        } catch (error) {
-            console.error("Error fetching users:", error);
-            throw error;
-        }
+        } catch (error) { throw error; }
     },
-    updateUserRole: async (uid: string, isAdmin: boolean): Promise<void> => {
-        if (!uid) throw new Error("Missing user ID");
-        const userRef = doc(dbInstance, 'users', uid);
-        await setDoc(userRef, { 
-            isAdmin: isAdmin,
-            uid: uid 
-        }, { merge: true });
+    markAllNotificationsAsRead: async (uid: string): Promise<void> => {
+        try {
+            const q = query(collection(dbInstance, 'notifications'), where('userId', '==', uid), where('isRead', '==', false));
+            const snap = await getDocs(q);
+            const batch = writeBatch(dbInstance);
+            snap.docs.forEach(d => batch.update(d.ref, { isRead: true }));
+            await batch.commit();
+        } catch (error) { throw error; }
     },
-    deleteUserProfile: async (uid: string): Promise<void> => {
-        await deleteDoc(doc(dbInstance, 'users', uid));
+    createNotification: async (notif: Omit<AppNotification, 'id'>): Promise<void> => {
+        try {
+            await addDoc(collection(dbInstance, 'notifications'), {
+                ...notif,
+                createdAt: serverTimestamp()
+            });
+        } catch (error) { throw error; }
+    },
+    deleteNotification: async (id: string): Promise<void> => {
+        try {
+            await deleteDoc(doc(dbInstance, 'notifications', id));
+        } catch (error) { throw error; }
+    },
+    clearAllNotifications: async (uid: string): Promise<void> => {
+        try {
+            const q = query(collection(dbInstance, 'notifications'), where('userId', '==', uid));
+            const snap = await getDocs(q);
+            const batch = writeBatch(dbInstance);
+            snap.docs.forEach(d => batch.delete(d.ref));
+            await batch.commit();
+        } catch (error) { throw error; }
+    },
+    getDriverActiveOffers: async (uid: string, direction: Direction): Promise<Trip[]> => {
+        try {
+            const now = new Date();
+            const thirtyMinsAgo = new Date(now.getTime() - 30 * 60 * 1000);
+            const q = query(
+                collection(dbInstance, 'trips'),
+                where('driverId', '==', uid),
+                where('type', '==', 'offer'),
+                where('direction', '==', direction),
+                where('departureTime', '>=', Timestamp.fromDate(thirtyMinsAgo))
+            );
+            const snap = await getDocs(q);
+            return snap.docs.map(d => ({ id: d.id, ...d.data() } as Trip));
+        } catch (error) { return []; }
+    },
+    sendSpecificTripInvitation: async (driverName: string, passengerId: string, trip: Trip): Promise<void> => {
+        try {
+            const notifRef = doc(collection(dbInstance, 'notifications'));
+            await setDoc(notifRef, {
+                userId: passengerId,
+                type: 'invite',
+                title: 'notif_invite_title',
+                message: 'notif_invite_msg',
+                relatedTripId: trip.id,
+                metadata: {
+                    driverName,
+                    directionKey: trip.direction,
+                    time: trip.departureTime.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    direction: trip.direction
+                },
+                isRead: false,
+                createdAt: serverTimestamp()
+            });
+        } catch (error) { throw error; }
     },
     broadcastNotification: async (title: string, message: string): Promise<void> => {
         try {
-            const senderId = authInstance.currentUser?.uid;
             await addDoc(collection(dbInstance, 'system_announcements'), {
-                title: title || 'עדכון מערכת',
-                message: message,
-                createdAt: serverTimestamp(),
+                title,
+                message,
                 isActive: true,
-                senderId: senderId || 'system'
+                createdAt: serverTimestamp()
             });
-        } catch (error) {
-            console.error("Failed to publish announcement:", error);
-            throw error;
-        }
-    },
-    getAllTripsForAdmin: async (): Promise<Trip[]> => {
-        const snapshot = await getDocs(query(collection(dbInstance, 'trips'), orderBy('departureTime', 'desc'), limit(200)));
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Trip));
-    },
-    getReports: async (): Promise<Report[]> => {
-        const q = query(collection(dbInstance, 'reports'));
-        const snap = await getDocs(q);
-        return snap.docs.map(d => ({ id: d.id, ...d.data() } as Report));
+        } catch (error) { throw error; }
     },
     resolveReport: async (report: Report): Promise<void> => {
-        const reportRef = doc(dbInstance, 'reports', report.id);
-        await updateDoc(reportRef, { status: 'resolved', resolvedAt: serverTimestamp() });
-    },
-    deleteReport: async (reportId: string): Promise<void> => {
-        await deleteDoc(doc(dbInstance, 'reports', reportId));
-    },
-    markNotificationAsRead: async (id: string) => {
-        await updateDoc(doc(dbInstance, 'notifications', id), { isRead: true });
-    },
-    markAllNotificationsAsRead: async (uid: string) => {
-        const q = query(collection(dbInstance, 'notifications'), where('userId', '==', uid), where('isRead', '==', false));
-        const snap = await getDocs(q);
-        const batch = writeBatch(dbInstance);
-        snap.docs.forEach(d => batch.update(d.ref, { isRead: true }));
-        await batch.commit();
-    },
-    deleteNotification: async (id: string) => {
-        await deleteDoc(doc(dbInstance, 'notifications', id));
-    },
-    dismissMatch: async (uid: string, tripId: string) => {
-        const userRef = doc(dbInstance, 'users', uid);
-        await updateDoc(userRef, {
-            dismissedMatchIds: arrayUnion(tripId)
-        });
-    },
-    clearAllNotifications: async (uid: string) => {
-        const q = query(collection(dbInstance, 'notifications'), where('userId', '==', uid));
-        const snap = await getDocs(q);
-        const batch = writeBatch(dbInstance);
-        snap.docs.forEach(d => batch.delete(d.ref));
-        await batch.commit();
-    },
-    createNotification: async (notif: any) => {
-        await addDoc(collection(dbInstance, 'notifications'), notif);
-    },
-    getUserStats: async (uid: string) => {
-        const qGiven = query(collection(dbInstance, 'trips'), where('driverId', '==', uid), where('type', '==', 'offer'));
-        const snapGiven = await getDocs(qGiven);
-        
-        const qTaken = query(collection(dbInstance, 'trips'), where('type', '==', 'offer'));
-        const snapAllOffers = await getDocs(qTaken);
-        const taken = snapAllOffers.docs.filter(d => (d.data() as Trip).passengers?.some(p => p.uid === uid && p.status === 'approved')).length;
-        
-        const requests = (await getDocs(query(collection(dbInstance, 'trips'), where('driverId', '==', uid), where('type', '==', 'request')))).size;
-        
-        return { given: snapGiven.size, taken: taken + requests };
-    },
-    setTypingStatus: async (tripId: string, uid: string) => {
-        await setDoc(doc(dbInstance, 'typing_status', tripId), { [uid]: serverTimestamp() }, { merge: true });
-    },
-    clearTypingStatus: async (tripId: string, uid: string) => {
-        await setDoc(doc(dbInstance, 'typing_status', tripId), { [uid]: deleteField() }, { merge: true });
-    },
-    sendChatMessage: async (msg: any) => {
-        await addDoc(collection(dbInstance, 'messages'), msg);
-    },
-    submitReport: async (report: any) => {
-        await addDoc(collection(dbInstance, 'reports'), { ...report, status: 'open', createdAt: serverTimestamp() });
-    },
-    updatePassengerDetails: async (tripId: string, uid: string, data: any) => {
-        const ref = doc(dbInstance, 'trips', tripId);
-        await runTransaction(dbInstance, async (t) => {
-            const snap = await t.get(ref);
-            const passengers = snap.data()?.passengers || [];
-            const idx = passengers.findIndex((p: any) => p.uid === uid);
-            if (idx !== -1) {
-                passengers[idx] = { ...passengers[idx], ...data };
-                t.update(ref, { passengers });
-            }
-        });
-    },
-    leaveTrip: async (tripId: string, uid: string) => {
-        const ref = doc(dbInstance, 'trips', tripId);
-        await runTransaction(dbInstance, async (t) => {
-            const snap = await t.get(ref);
-            const data = snap.data();
-            const pIdx = data?.passengers.findIndex((p: any) => p.uid === uid);
-            if (pIdx === -1) return;
-            const updated = data?.passengers.filter((p: any) => p.uid !== uid);
-            t.update(ref, { passengers: updated, availableSeats: increment(data?.passengers[pIdx].status === 'approved' ? 1 : 0) });
-            
-            const notifRef = doc(collection(dbInstance, 'notifications'));
-            t.set(notifRef, {
-                userId: data?.driverId,
-                type: 'cancel',
-                title: 'notif_passenger_left_title',
-                message: `notif_passenger_left_msg|${data?.passengers[pIdx].name}`,
-                relatedTripId: tripId,
-                isRead: false,
-                createdAt: serverTimestamp()
-            });
-        });
-    },
-    removePassenger: async (tripId: string, uid: string) => {
-        const ref = doc(dbInstance, 'trips', tripId);
-        await runTransaction(dbInstance, async (t) => {
-            const snap = await t.get(ref);
-            const data = snap.data();
-            const pIdx = data?.passengers.findIndex((p: any) => p.uid === uid);
-            if (pIdx === -1) return;
-            
-            const updated = data?.passengers.filter((p: any) => p.uid !== uid);
-            t.update(ref, { passengers: updated, availableSeats: increment(data?.passengers[pIdx].status === 'approved' ? 1 : 0) });
-            
-            const notifRef = doc(collection(dbInstance, 'notifications'));
-            t.set(notifRef, {
-                userId: uid,
-                type: 'cancel', 
-                title: 'notif_removed_title',
-                message: 'notif_removed_msg',
-                relatedTripId: tripId,
-                isRead: false,
-                createdAt: serverTimestamp()
-            });
-        });
-    },
-    sendSpecificTripInvitation: async (dName: string, pId: string, trip: any) => {
-        await addDoc(collection(dbInstance, 'notifications'), {
-            userId: pId,
-            type: 'invite',
-            title: 'notif_invite_title',
-            message: 'notif_invite_msg',
-            relatedTripId: trip.id,
-            metadata: { 
-                driverName: dName, 
-                time: trip.departureTime.toDate().toLocaleTimeString([], { hour: '2-digit', minute:'2-digit' }), 
-                directionKey: trip.direction, 
-                direction: trip.direction 
-            },
-            isRead: false,
-            createdAt: serverTimestamp()
-        });
-    },
-    getDriverActiveOffers: async (uid: string, dir: string) => {
-        const q = query(
-            collection(dbInstance, 'trips'), 
-            where('driverId', '==', uid), 
-            where('type', '==', 'offer')
-        );
-        
         try {
+            await updateDoc(doc(dbInstance, 'reports', report.id), {
+                status: 'resolved',
+                resolvedAt: serverTimestamp()
+            });
+        } catch (error) { throw error; }
+    },
+    deleteReport: async (id: string): Promise<void> => {
+        try {
+            await deleteDoc(doc(dbInstance, 'reports', id));
+        } catch (error) { throw error; }
+    },
+    submitReport: async (reportData: Omit<Report, 'id' | 'status' | 'createdAt'>): Promise<void> => {
+        try {
+            await addDoc(collection(dbInstance, 'reports'), {
+                ...reportData,
+                status: 'open',
+                createdAt: serverTimestamp()
+            });
+        } catch (error) { throw error; }
+    },
+    getUserStats: async (uid: string): Promise<{ given: number, taken: number }> => {
+        try {
+            const q = query(collection(dbInstance, 'trips'));
             const snap = await getDocs(q);
-            const now = new Date();
-            const thirtyMinsAgo = new Date(now.getTime() - 30 * 60 * 1000);
-            const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-            
-            const rides = snap.docs
-                .map(d => ({ id: d.id, ...d.data() } as Trip))
-                .filter(ride => {
-                    const depTime = ride.departureTime.toDate();
-                    return (
-                        ride.direction === dir &&
-                        ride.isClosed !== true &&
-                        ride.availableSeats > 0 &&
-                        depTime >= thirtyMinsAgo &&
-                        depTime <= sevenDaysLater
-                    );
-                });
-
-            return rides.sort((a, b) => a.departureTime.toMillis() - b.departureTime.toMillis());
-        } catch (error) {
-            console.error("Firestore error in getDriverActiveOffers:", error);
-            return [];
-        }
+            const trips = snap.docs.map(d => d.data() as Trip);
+            const given = trips.filter(t => t.driverId === uid && t.type === 'offer').length;
+            const taken = trips.filter(t => 
+                (t.passengers?.some(p => p.uid === uid && p.status === 'approved')) || 
+                (t.driverId === uid && t.type === 'request')
+            ).length;
+            return { given, taken };
+        } catch (error) { return { given: 0, taken: 0 }; }
     },
-    acceptTripInvitation: async (tripId: string, passenger: any, nId: string) => {
-        const ref = doc(dbInstance, 'trips', tripId);
-        await runTransaction(dbInstance, async (transaction) => {
-            const snap = await transaction.get(ref);
-            if (!snap.exists()) throw new Error("Trip not found");
-            const data = snap.data() as Trip;
-            if (data.availableSeats <= 0) throw new Error("Ride is full");
-            
-            transaction.update(ref, { 
-                passengers: arrayUnion(passenger), 
-                availableSeats: increment(-1) 
-            });
-            transaction.delete(doc(dbInstance, 'notifications', nId));
-
-            const tripsRef = collection(dbInstance, 'trips');
-            const q = query(tripsRef, 
-                where('driverId', '==', passenger.uid), 
-                where('type', '==', 'request'),
-                where('direction', '==', data.direction)
-            );
-            
-            const userRequestsSnap = await getDocs(q);
-            userRequestsSnap.forEach(requestDoc => {
-                const reqData = requestDoc.data();
-                const reqDate = reqData.departureTime.toDate().toDateString();
-                const tripDate = data.departureTime.toDate().toDateString();
-                if (reqDate === tripDate) {
-                    transaction.delete(doc(dbInstance, 'trips', requestDoc.id));
-                }
-            });
-        });
+    setTypingStatus: async (tripId: string, userId: string): Promise<void> => {
+        try {
+            const ref = doc(dbInstance, 'typing_status', tripId);
+            await setDoc(ref, { [userId]: serverTimestamp() }, { merge: true });
+        } catch (error) {}
     },
-    rejectTripInvitation: async (tripId: string, name: string, nId: string) => {
-        await deleteDoc(doc(dbInstance, 'notifications', nId));
+    clearTypingStatus: async (tripId: string, userId: string): Promise<void> => {
+        try {
+            const ref = doc(dbInstance, 'typing_status', tripId);
+            await updateDoc(ref, { [userId]: deleteField() });
+        } catch (error) {}
+    },
+    sendChatMessage: async (msg: Omit<ChatMessage, 'id'>): Promise<void> => {
+        try {
+            await addDoc(collection(dbInstance, 'messages'), {
+                ...msg,
+                createdAt: serverTimestamp()
+            });
+        } catch (error) { throw error; }
     }
 };

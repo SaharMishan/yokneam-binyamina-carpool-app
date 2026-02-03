@@ -13,13 +13,12 @@ window.addEventListener('beforeinstallprompt', (e) => {
 });
 
 /**
- * רישום ה-Service Worker - מותאם גם ל-Netlify
+ * רישום ה-Service Worker - נתיב אבסולוטי לשורש עבור Netlify
  */
 const registerSW = async () => {
   if ('serviceWorker' in navigator) {
     try {
-      // שימוש בנתיב יחסי להבטחת עבודה בשרתים שונים
-      const registration = await navigator.serviceWorker.register('./sw.js', { scope: './' });
+      const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
       console.log('PWA Service Worker Active!', registration.scope);
     } catch (err) {
       console.warn('PWA Registration failed:', err);
@@ -27,7 +26,6 @@ const registerSW = async () => {
   }
 };
 
-// רישום ה-SW לאחר טעינת הדף המלאה
 window.addEventListener('load', registerSW);
 
 const rootElement = document.getElementById('root');
