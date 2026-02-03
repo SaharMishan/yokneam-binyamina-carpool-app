@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { db, dbInstance } from '../services/firebase';
 import { useLocalization } from '../context/LocalizationContext';
 import { ChatMessage, Trip } from '../types';
-import { collection, query, where, onSnapshot, Timestamp, doc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, Timestamp, doc, orderBy } from 'firebase/firestore';
 import { X, Send, MessageCircle, MapPin, Camera, Image as ImageIcon, Loader2, Navigation, Map as MapIcon, AlertCircle, Lock, Info, Compass } from 'lucide-react';
 import Portal from './Portal';
 
@@ -27,7 +27,7 @@ const WazeLogo = () => (
     </svg>
 );
 
-// לוגו Google Maps המקורי - מה-SVG שסיפקת
+// לוגו Google Maps המקורי
 const GoogleMapsLogo = () => (
     <svg width="16" height="16" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
         <path fill="#48b564" d="M35.76,26.36h0.01c0,0-3.77,5.53-6.94,9.64c-2.74,3.55-3.54,6.59-3.77,8.06 C24.97,44.6,24.53,45,24,45s-0.97-0.4-1.06-0.94c-0.23-1.47-1.03-4.51-3.77-8.06c-0.42-0.55-0.85-1.12-1.28-1.7L28.24,22l8.33-9.88 C37.49,14.05,38,16.21,38,18.5C38,21.4,37.17,24.09,35.76,26.36z"></path>
@@ -112,12 +112,17 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose, trip }) => {
     const updateReadStatus = (latestMsgs?: ChatMessage[]) => {
         if (!user || !trip.id) return;
         const storageKey = `lastRead_${trip.id}_${user.uid}`;
-        let timestamp = Date.now() + 5000;
+        
+        // הגדרה של זמן קריאה עתידי משמעותי (3 דקות קדימה) כדי להבטיח איפוס מוחלט של המונה
+        let timestamp = Date.now() + 180000; 
+        
         if (latestMsgs && latestMsgs.length > 0) {
             const lastMsgTime = latestMsgs[latestMsgs.length - 1].createdAt?.toMillis();
-            if (lastMsgTime) timestamp = lastMsgTime + 1000;
+            if (lastMsgTime) timestamp = Math.max(timestamp, lastMsgTime + 10000);
         }
+        
         localStorage.setItem(storageKey, timestamp.toString());
+        // שיגור אירוע גלובלי כדי לעדכן את המונה בכרטיסי הנסיעה באופן מיידי
         window.dispatchEvent(new CustomEvent('chatRead', { detail: { tripId: trip.id } }));
     };
 
@@ -130,15 +135,39 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose, trip }) => {
     useEffect(() => {
         if (!isOpen) return;
         setLoading(true);
-        const q = query(collection(dbInstance, 'messages'), where('tripId', '==', trip.id));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatMessage));
-            msgs.sort((a, b) => (a.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
-            setMessages(msgs.slice(-50));
+
+        const qWithOrder = query(
+            collection(dbInstance, 'messages'), 
+            where('tripId', '==', trip.id),
+            orderBy('createdAt', 'asc')
+        );
+
+        const qSimple = query(
+            collection(dbInstance, 'messages'),
+            where('tripId', '==', trip.id)
+        );
+        
+        const processSnapshot = (snapshot: any) => {
+            let msgs = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as ChatMessage));
+            
+            if (snapshot.query === qSimple) {
+                msgs.sort((a: any, b: any) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0));
+            }
+
+            setMessages(msgs);
             setLoading(false);
             updateReadStatus(msgs);
             scrollToBottom(messages.length === 0 ? 'auto' : 'smooth');
+        };
+
+        const unsubscribe = onSnapshot(qWithOrder, processSnapshot, (err) => {
+            if (err.message.includes('requires an index') || err.message.includes('FAILED_PRECONDITION')) {
+                onSnapshot(qSimple, processSnapshot);
+            } else {
+                setLoading(false);
+            }
         });
+        
         return () => {
             unsubscribe();
             if (user) db.clearTypingStatus(trip.id, user.uid);
@@ -342,7 +371,6 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose, trip }) => {
                                             )}
                                             {msg.type === 'location' && msg.location && (
                                                 <div className="w-[170px] bg-white dark:bg-slate-800 rounded-[2rem] shadow-2xl border border-indigo-100 dark:border-indigo-900 overflow-hidden flex flex-col group transition-all duration-300">
-                                                    {/* Animated Navigation Background - Compact 170px */}
                                                     <div className="h-16 w-full relative overflow-hidden flex items-center justify-center bg-indigo-50 dark:bg-indigo-950/40">
                                                         <div className="absolute inset-0 opacity-20" 
                                                              style={{ 

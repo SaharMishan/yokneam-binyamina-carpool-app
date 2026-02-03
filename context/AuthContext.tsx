@@ -1,8 +1,8 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { auth, db, dbInstance } from '../services/firebase';
+import { auth, db, dbInstance, authInstance } from '../services/firebase';
 import { UserProfile } from '../types';
-import { setDoc, doc, onSnapshot, getDoc } from 'firebase/firestore';
+import { setDoc, doc, onSnapshot, getDoc, serverTimestamp } from 'firebase/firestore';
 
 interface AuthContextType {
     user: UserProfile | null;
@@ -44,7 +44,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 if (isMaster) {
                     try {
                         const masterRef = doc(dbInstance, 'users', currentFirebaseUser.uid);
-                        // אנחנו משתמשים ב-setDoc עם merge:true כדי לוודא ששדה ה-isAdmin תמיד יהיה true בשרת
                         await setDoc(masterRef, { 
                             isAdmin: true,
                             email: currentFirebaseUser.email,
@@ -60,11 +59,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     if (docSnap.exists()) {
                         setUser({ ...docSnap.data(), uid: docSnap.id } as UserProfile);
                     } else {
+                        // אם המשתמש מחובר ב-Auth אבל אין לו מסמך (קורה לפעמים בשינויי דאטהבייס)
                         const shell: UserProfile = {
                             uid: currentFirebaseUser.uid,
                             displayName: currentFirebaseUser.displayName || 'Guest',
                             email: currentFirebaseUser.email,
                             phoneNumber: '',
+                            photoURL: currentFirebaseUser.photoURL || '',
                             isAdmin: isMaster, 
                             privacySettings: { profileVisibility: 'public', notificationsEnabled: true }
                         };
@@ -89,7 +90,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }, []);
 
     const signInWithGoogle = async () => {
-        await auth.signInWithGoogle();
+        const result = await auth.signInWithGoogle() as any;
+        const loggedInUser = result.user;
+        
+        if (loggedInUser) {
+            // בדיקה האם קיים פרופיל ב-Firestore
+            const userDocRef = doc(dbInstance, 'users', loggedInUser.uid);
+            const userDoc = await getDoc(userDocRef);
+            
+            if (!userDoc.exists()) {
+                // יצירת פרופיל חדש על בסיס הנתונים מגוגל
+                const isMaster = loggedInUser.email?.toLowerCase() === MASTER_EMAIL.toLowerCase();
+                const newUserProfile: UserProfile = {
+                    uid: loggedInUser.uid,
+                    displayName: loggedInUser.displayName || 'Guest',
+                    displayNameEn: null, // גוגל לא נותן הפרדה, המשתמש יוכל לעדכן בפרופיל
+                    email: loggedInUser.email,
+                    phoneNumber: '', // גוגל לרוב לא נותן טלפון, המשתמש יתבקש להשלים
+                    photoURL: loggedInUser.photoURL || '',
+                    isAdmin: isMaster,
+                    createdAt: serverTimestamp() as any,
+                    privacySettings: { profileVisibility: 'public', notificationsEnabled: true }
+                };
+                await setDoc(userDocRef, newUserProfile);
+            }
+        }
     };
     
     const signInWithEmail = async (email: string, pass: string) => {
@@ -107,6 +132,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 email: email,
                 phoneNumber: phone,
                 isAdmin: isMaster,
+                createdAt: serverTimestamp() as any,
                 privacySettings: { profileVisibility: 'public', notificationsEnabled: true }
             };
             await db.createUserProfile(newUserProfile);

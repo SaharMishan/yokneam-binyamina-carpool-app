@@ -4,6 +4,8 @@ import {
     getAuth, 
     signInWithPopup, 
     GoogleAuthProvider, 
+    signInWithRedirect,
+    getRedirectResult,
     signOut as firebaseSignOut,
     onAuthStateChanged as firebaseOnAuthStateChanged,
     signInWithEmailAndPassword as firebaseSignInWithEmailAndPassword,
@@ -54,6 +56,7 @@ const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 export const authInstance = getAuth(app);
 export const dbInstance = getFirestore(app);
+export const googleProvider = new GoogleAuthProvider();
 
 export const auth = {
     onAuthStateChanged: (callback: (user: User | null) => void) => {
@@ -63,7 +66,9 @@ export const auth = {
     signInWithEmailAndPassword: (email: string, pass: string) => firebaseSignInWithEmailAndPassword(authInstance, email, pass),
     createUserWithEmailAndPassword: (email: string, pass: string) => firebaseCreateUserWithEmailAndPassword(authInstance, email, pass),
     sendPasswordResetEmail: (email: string) => firebaseSendPasswordResetEmail(authInstance, email),
-    signInWithGoogle: () => signInWithPopup(authInstance, new GoogleAuthProvider()),
+    signInWithGoogle: () => signInWithPopup(authInstance, googleProvider),
+    signInWithGoogleRedirect: () => signInWithRedirect(authInstance, googleProvider),
+    getRedirectResult: () => getRedirectResult(authInstance),
     setPersistence: (persistenceType: 'local' | 'session' | 'none') => {
         let firebasePersistence;
         switch (persistenceType) {
@@ -437,8 +442,6 @@ export const db = {
         });
     },
     getDriverActiveOffers: async (uid: string, dir: string) => {
-        // SIMPLIFIED QUERY: Fetch all offers for this driver to avoid index errors.
-        // We will filter by direction and time in memory for 100% reliability.
         const q = query(
             collection(dbInstance, 'trips'), 
             where('driverId', '==', uid), 
@@ -484,7 +487,6 @@ export const db = {
             });
             transaction.delete(doc(dbInstance, 'notifications', nId));
 
-            // AUTOMATICALLY CLOSE PASSENGER'S OWN REQUEST FOR THIS DAY/DIRECTION
             const tripsRef = collection(dbInstance, 'trips');
             const q = query(tripsRef, 
                 where('driverId', '==', passenger.uid), 

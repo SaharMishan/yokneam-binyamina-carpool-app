@@ -11,7 +11,7 @@ interface LoginViewProps {
 }
 
 const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
-    const { t, dir } = useLocalization();
+    const { t, dir, language } = useLocalization();
     const { signInWithEmail, signInWithGoogle } = useAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -36,7 +36,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onSwitchToFor
             if (errorCode === 'auth/user-not-found' || errorCode === 'auth/invalid-email') {
                 setError(t('error_user_not_found'));
             } else if (errorCode === 'auth/wrong-password') {
-                setError('סיסמה שגויה. נסה שוב.');
+                setError(language === 'he' ? 'סיסמה שגויה. נסה שוב.' : 'Incorrect password. Try again.');
             } else {
                 setError(t('error_generic'));
             }
@@ -51,7 +51,20 @@ const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onSwitchToFor
             await signInWithGoogle();
         } catch (err: any) {
             setIsSubmitting(false);
-            setError(t('error_generic'));
+            console.error("Google login error:", err);
+            
+            if (err.code === 'auth/popup-blocked') {
+                setError(language === 'he' ? 'החלון הקופץ נחסם על ידי הדפדפן. אנא אפשר פופ-אפים לאתר זה.' : 'Popup blocked by browser. Please allow popups for this site.');
+            } else if (err.code === 'auth/unauthorized-domain') {
+                setError(language === 'he' ? 'דומיין זה אינו מורשה להתחברות גוגל. בדוק הגדרות Firebase.' : 'Unauthorized domain. Check Firebase configuration.');
+            } else if (err.code === 'auth/operation-not-allowed') {
+                setError(language === 'he' ? 'ספק גוגל אינו מופעל ב-Firebase Console.' : 'Google provider not enabled in Firebase Console.');
+            } else if (err.code === 'auth/popup-closed-by-user') {
+                // User closed popup, don't show scary error
+                return;
+            } else {
+                setError(t('error_generic'));
+            }
         }
     };
 
