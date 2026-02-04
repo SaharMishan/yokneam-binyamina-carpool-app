@@ -39,7 +39,10 @@ const translations: Translations = {
         select_trip_to_invite: 'Select one of your rides:',
         no_active_rides_to_invite: 'No active rides to offer',
         passenger_busy_error: 'Passenger already booked',
-        request_status_title: 'Your Request Status'
+        request_status_title: 'Your Request Status',
+        share_trip: 'Share',
+        share_message_offer: 'Hi! I am driving {direction} on {date} at {time}. Join me: {link}',
+        share_message_request: 'Hi! I am looking for a ride {direction} on {date} at {time}. Anyone going? {link}'
     },
     he: {
         app_title: 'קארפול יקנעם-בנימינה',
@@ -274,6 +277,7 @@ const translations: Translations = {
         terms_close: 'הבנתי, תודה',
         navigate_waze: 'ניווט ב-Waze',
         navigate_google: 'ניווט ב-Google Maps',
+        share_trip: 'שיתוף',
         share_message_offer: 'היי! אני יוצא בנסיעה {direction} בשעה {time} בתאריך {date}. הצטרפו אליי כאן: {link}',
         share_message_request: 'היי! אני מחפש נסיעה {direction} בשעה {time} בתאריך {date}. מישהו בדרך? {link}',
         leave_ride_modal_title: 'עזיבת נסיעה',

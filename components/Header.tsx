@@ -66,18 +66,9 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onLogoClick, onNavigateToT
                 } else if (notif.type === 'invite') {
                     if (action === 'approve') {
                          await db.acceptTripInvitation(notif.relatedTripId, { uid: user!.uid, name: user!.displayName || 'Guest', photo: user!.photoURL || '', phoneNumber: user!.phoneNumber || '', status: 'approved' }, notif.id);
-                         // Navigate passenger to the trip they just joined
-                         if (notif.relatedTripId && notif.metadata?.direction) {
-                            onNavigateToTrip(notif.relatedTripId, notif.metadata.direction);
-                            setShowNotifications(false);
-                         }
-                    } else { 
-                        await db.rejectTripInvitation(notif.relatedTripId, user!.displayName || 'Guest', notif.id); 
-                    }
+                    } else { await db.rejectTripInvitation(notif.relatedTripId, user!.displayName || 'Guest', notif.id); }
                 }
-            } catch (err) { 
-                console.error(err); 
-            }
+            } catch (err) { console.error(err); }
             finally { setProcessingNotifId(null); }
         };
 
@@ -111,11 +102,23 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onLogoClick, onNavigateToT
     return (
         <header className="fixed top-0 left-0 right-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/60 h-16 z-[60] transition-all shadow-sm">
             <div className="w-full px-4 sm:px-6 h-full flex items-center justify-between">
-                <div className="flex items-center gap-3 cursor-pointer group" onClick={onLogoClick}>
+                <div 
+                    className={`flex items-center gap-3 cursor-pointer group md:order-1 ${dir === 'rtl' ? 'order-2 md:order-1' : 'order-1'}`} 
+                    onClick={onLogoClick}
+                >
                     <div className="bg-gradient-to-tr from-blue-600 to-indigo-600 text-white p-2 rounded-xl shadow-md group-hover:rotate-6 transition-transform"><CarFront size={20} /></div>
                     <h1 className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-800 to-slate-600 dark:from-white dark:to-slate-300 hidden sm:block">{t('app_title')}</h1>
                 </div>
-                <div className="flex items-center gap-2">
+
+                <div className={`flex items-center gap-2 md:order-2 ${dir === 'rtl' ? 'order-1 md:order-2' : 'order-2'}`}>
+                    {/* Mobile Only: Menu button on start side for RTL */}
+                    <button 
+                        onClick={onMenuClick} 
+                        className="md:hidden p-2 rounded-full text-slate-800 dark:text-white bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 transition-all active:scale-95"
+                    >
+                        <Menu size={20} />
+                    </button>
+
                     <div className="relative" ref={notifRef}>
                         <button onClick={() => setShowNotifications(!showNotifications)} className="p-2 rounded-full text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-all relative">
                             <Bell size={20} />
@@ -138,7 +141,6 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onLogoClick, onNavigateToT
                     </div>
                     <button onClick={toggleTheme} className="p-2 rounded-full text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 hidden sm:block">{isDarkMode ? <Moon size={20} /> : <Sun size={20} />}</button>
                     <button onClick={toggleLanguage} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"><Globe size={16} /><span className="text-xs font-black uppercase tracking-widest">{language}</span></button>
-                    <button onClick={onMenuClick} className="md:hidden p-2 rounded-full text-slate-800 dark:text-white bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 transition-all active:scale-95"><Menu size={20} /></button>
                 </div>
             </div>
         </header>

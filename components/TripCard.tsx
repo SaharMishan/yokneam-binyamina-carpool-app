@@ -1,5 +1,5 @@
 
-import React, { useState, memo, useEffect } from 'react';
+import React, { useState, memo, useEffect, useCallback } from 'react';
 import { Trip, Passenger, Direction } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useLocalization } from '../context/LocalizationContext';
@@ -8,9 +8,9 @@ import { db, dbInstance } from '../services/firebase';
 import { 
     Phone, MessageCircle, Trash2, Edit3, MapPin, Loader2, 
     User, LogOut, CarFront, Clock, UserPlus, 
-    ShieldCheck, ChevronRight, UserCheck, Unlock, Lock, Navigation, AlertTriangle, Bell, Send, CheckCircle, Info
+    ShieldCheck, ChevronRight, UserCheck, Unlock, Lock, Navigation, AlertTriangle, Bell, Send, CheckCircle, Info, Share2
 } from 'lucide-react';
-import { collection, query, where, onSnapshot, getDocs } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, getDocs, limit } from 'firebase/firestore';
 import ChatModal from './ChatModal';
 import JoinPickupModal from './JoinPickupModal';
 import InviteSelectionModal from './InviteSelectionModal';
@@ -60,7 +60,8 @@ const TripCard: React.FC<TripCardProps> = ({ trip, onEdit, onPostTripClick }) =>
                 const dateStr = trip.departureTime.toDate().toDateString();
                 const q = query(tripsRef, 
                     where('direction', '==', trip.direction),
-                    where('type', '==', 'offer')
+                    where('type', '==', 'offer'),
+                    limit(20) // Limit search for performance
                 );
                 const snap = await getDocs(q);
                 const assigned = snap.docs.some(doc => {
@@ -92,7 +93,12 @@ const TripCard: React.FC<TripCardProps> = ({ trip, onEdit, onPostTripClick }) =>
             }).length;
         };
 
-        const q = query(collection(dbInstance, 'messages'), where('tripId', '==', trip.id));
+        const q = query(
+            collection(dbInstance, 'messages'), 
+            where('tripId', '==', trip.id),
+            limit(50) // Don't subscribe to infinite messages
+        );
+        
         const unsubscribe = onSnapshot(q, (snap) => {
             const msgs = snap.docs.map(d => d.data());
             setUnreadCount(calculateUnread(msgs));
@@ -128,6 +134,23 @@ const TripCard: React.FC<TripCardProps> = ({ trip, onEdit, onPostTripClick }) =>
     const fromCity = isYokneamToBinyamina ? t('city_yokneam') : t('city_binyamina');
     const toCity = isYokneamToBinyamina ? t('city_binyamina') : t('city_yokneam');
     const displayLocation = trip.pickupLocation ? t(trip.pickupLocation) : t('error_location_required');
+
+    const handleShare = useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const prodUrl = `https://yokneam-binyamina-carpool.netlify.app/?tripId=${trip.id}`;
+        const dirStr = isYokneamToBinyamina ? t('yokneam_to_binyamina') : t('binyamina_to_yokneam');
+        
+        const message = t(trip.type === 'offer' ? 'share_message_offer' : 'share_message_request')
+            .replace('{direction}', dirStr)
+            .replace('{time}', departureTimeStr)
+            .replace('{date}', `${dayNameStr} ${dayAndMonthStr}`)
+            .replace('{link}', prodUrl);
+
+        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+        window.open(whatsappUrl, '_blank');
+    }, [trip, t, isYokneamToBinyamina, departureTimeStr, dayNameStr, dayAndMonthStr]);
 
     const handleJoinRequestFromModal = async (pickupLoc: string) => {
         if (!user || isJoining || isPending || isApproved || isFull || trip.isClosed) return;
@@ -215,22 +238,10 @@ const TripCard: React.FC<TripCardProps> = ({ trip, onEdit, onPostTripClick }) =>
                 onPostTripClick={() => onPostTripClick?.()}
             />
 
-            {/* הפס הצבעוני הימני */}
             <div className={`w-1.5 shrink-0 ${themeClasses.accent} opacity-80 group-hover:opacity-100 transition-all`}></div>
 
             <div className="flex-1 p-5 flex flex-col relative">
                 
-                {/* תגית סטטוס צפה - הועברה לצד שמאל (Start) כדי לא להסתיר את כפתור העריכה שבימין */}
-                {isClosed && !isRequest && (
-                    <div className={`absolute top-4 ${dir === 'rtl' ? 'left-4' : 'right-4'} z-10 animate-fade-in`}>
-                        <div className={`flex items-center gap-1.5 px-3 py-2 rounded-full border shadow-2xl backdrop-blur-xl font-black text-[10px] uppercase tracking-wider ${isFull && !trip.isClosed ? 'bg-amber-600 border-amber-400 text-white' : 'bg-slate-800 border-slate-700 text-white'}`}>
-                            {isFull && !trip.isClosed ? <Info size={11} strokeWidth={3} /> : <Lock size={11} strokeWidth={3} />}
-                            {t(isFull && !trip.isClosed ? 'trip_full' : 'ride_closed')}
-                        </div>
-                    </div>
-                )}
-
-                {/* התראות לנהג */}
                 {hasPendingRequests && (
                     <div className="mb-4 animate-pulse">
                         <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl px-3.5 py-2 flex items-center justify-between gap-2 shadow-sm">
@@ -243,8 +254,7 @@ const TripCard: React.FC<TripCardProps> = ({ trip, onEdit, onPostTripClick }) =>
                     </div>
                 )}
 
-                {/* החלק העליון - פרטי נהג */}
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-3 min-w-0 text-start flex-1">
                         <div className="relative shrink-0">
                             <div className="w-12 h-12 rounded-[1.2rem] overflow-hidden border-2 border-white dark:border-slate-800 shadow-md bg-slate-50">
@@ -262,13 +272,44 @@ const TripCard: React.FC<TripCardProps> = ({ trip, onEdit, onPostTripClick }) =>
                         </div>
                     </div>
                     
-                    {/* כפתור עריכה - בימין (End) */}
-                    {isOwner && (
-                        <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEdit && onEdit(trip); }} className="p-2.5 text-slate-400 hover:text-indigo-600 bg-slate-50 dark:bg-slate-800 rounded-xl transition-all active:scale-90 shadow-sm border border-slate-100 dark:border-slate-700 shrink-0"><Edit3 size={18} /></button>
-                    )}
+                    <div className="flex items-center gap-2 shrink-0">
+                        <button 
+                            onClick={handleShare}
+                            className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-xl border border-emerald-100 dark:border-emerald-800 shadow-sm active:scale-90 transition-all hover:bg-emerald-100 dark:hover:bg-emerald-900/60"
+                            title={t('share_trip')}
+                        >
+                            <Share2 size={18} />
+                        </button>
+                        {isOwner && (
+                            <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEdit && onEdit(trip); }} className="p-2.5 text-slate-400 hover:text-indigo-600 bg-slate-50 dark:bg-slate-800 rounded-xl transition-all active:scale-90 shadow-sm border border-slate-100 dark:border-slate-700 shrink-0"><Edit3 size={18} /></button>
+                        )}
+                    </div>
                 </div>
 
-                {/* מסלול הנסיעה */}
+                {/* Status Banner - Redesigned to be more creative and visible without overlapping */}
+                {isClosed && !isRequest && (
+                    <div className="mb-4 animate-scale-in">
+                        <div className={`relative overflow-hidden w-full py-2.5 px-4 rounded-2xl flex items-center justify-center gap-2 shadow-sm border ${isFull && !trip.isClosed ? 'bg-amber-500/10 border-amber-200/50 text-amber-600' : 'bg-slate-900 border-slate-800 text-white'}`}>
+                            {/* Inner background glow effect */}
+                            <div className={`absolute inset-0 opacity-20 ${isFull && !trip.isClosed ? 'bg-amber-400 animate-pulse' : 'bg-indigo-500'}`}></div>
+                            
+                            <div className="relative z-10 flex items-center gap-2">
+                                {isFull && !trip.isClosed ? (
+                                    <>
+                                        <div className="w-5 h-5 bg-amber-500 text-white rounded-full flex items-center justify-center shadow-md animate-bounce"><Info size={12} strokeWidth={4} /></div>
+                                        <span className="text-[11px] font-black uppercase tracking-[0.1em]">{t('trip_full')}</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="w-5 h-5 bg-white text-slate-900 rounded-full flex items-center justify-center shadow-md"><Lock size={11} strokeWidth={4} /></div>
+                                        <span className="text-[11px] font-black uppercase tracking-[0.1em]">{t('ride_closed')}</span>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 <div className={`bg-slate-50/60 dark:bg-slate-800/40 rounded-[1.8rem] p-4 mb-4 border border-slate-100 dark:border-slate-700/50 transition-all`}>
                     <div className="flex items-center justify-between relative z-10">
                         <div className="flex flex-col items-center gap-1.5 flex-1">
@@ -277,7 +318,6 @@ const TripCard: React.FC<TripCardProps> = ({ trip, onEdit, onPostTripClick }) =>
                         </div>
                         <div className="flex-1 flex flex-col items-center relative px-2">
                             <div className="w-full border-t-2 border-dashed border-slate-200 dark:border-slate-700 absolute top-[11px] z-0"></div>
-                            {/* תיקון צבע האייקון - תמיד בצבע הנושא */}
                             <div className={`p-1.5 rounded-full ${themeClasses.accent} text-white shadow-lg relative z-10 mb-2 transform group-hover:scale-110 transition-transform`}>{isRequest ? <User size={10} strokeWidth={4} /> : <CarFront size={10} strokeWidth={4} />}</div>
                             <div className="relative z-10 bg-white dark:bg-slate-700 px-3 py-0.5 rounded-full border border-slate-100 dark:border-slate-600 shadow-sm">
                                 <span className="text-[10px] font-black text-slate-700 dark:text-slate-200 uppercase tracking-tighter whitespace-nowrap">{dayNameStr} {dayAndMonthStr}</span>
@@ -290,7 +330,6 @@ const TripCard: React.FC<TripCardProps> = ({ trip, onEdit, onPostTripClick }) =>
                     </div>
                 </div>
 
-                {/* פרטים טכניים (שעה ומקומות) */}
                 <div className="grid grid-cols-2 gap-3 mb-4">
                     <div className="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 py-3.5 px-3 rounded-2xl flex items-center gap-3 shadow-sm">
                         <div className={`shrink-0 p-2.5 rounded-xl ${themeClasses.light} ${themeClasses.text}`}><Clock size={16} strokeWidth={3} /></div>
@@ -308,7 +347,6 @@ const TripCard: React.FC<TripCardProps> = ({ trip, onEdit, onPostTripClick }) =>
                     </div>
                 </div>
 
-                {/* מיקום איסוף */}
                 <div className="flex flex-col gap-0.5 px-1 mb-5 text-start">
                     <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none mb-1">{t(isRequest ? 'departure_point_request' : 'departure_point_offer')}</span>
                     <div className="flex items-center gap-2">
@@ -317,7 +355,6 @@ const TripCard: React.FC<TripCardProps> = ({ trip, onEdit, onPostTripClick }) =>
                     </div>
                 </div>
 
-                {/* נוסעים מאושרים לנהג */}
                 {isOwner && approvedPassengers.length > 0 && !isRequest && (
                     <div className="mt-1 mb-5 animate-fade-in">
                         <div className="flex items-center justify-between mb-2.5 px-1">
@@ -355,7 +392,6 @@ const TripCard: React.FC<TripCardProps> = ({ trip, onEdit, onPostTripClick }) =>
                     </div>
                 )}
 
-                {/* כפתורי פעולה */}
                 <div className="mt-auto">
                     {isOwner ? (
                         <div className="flex flex-col gap-2.5">
@@ -416,7 +452,6 @@ const TripCard: React.FC<TripCardProps> = ({ trip, onEdit, onPostTripClick }) =>
                 </div>
             </div>
 
-            {/* מודלים של אישור מחיקה ועזיבה */}
             {showDeleteConfirm && (
                 <Portal>
                     <div className="fixed inset-0 z-[300] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in" onClick={() => !isDeleting && setShowDeleteConfirm(false)}>
@@ -441,7 +476,7 @@ const TripCard: React.FC<TripCardProps> = ({ trip, onEdit, onPostTripClick }) =>
                             <h4 className="text-xl font-black text-slate-900 dark:text-white mb-2">{t('leave_ride_modal_title')}</h4>
                             <p className="text-sm font-bold text-slate-500 mb-8 leading-relaxed">{t('leave_ride_modal_confirm_msg')}</p>
                             <div className="flex flex-col gap-3">
-                                <button onClick={handleLeaveTripAction} className="w-full py-4 bg-amber-600 text-white font-black rounded-2xl shadow-lg shadow-amber-600/20 active:scale-95 transition-all">{isLeaving ? <Loader2 className="animate-spin" size={20} /> : t('confirm')}</button>
+                                <button onClick={handleLeaveTripAction} className="w-full py-4 bg-amber-600 text-white font-black rounded-2xl shadow-xl shadow-amber-600/20 active:scale-95 transition-all">{isLeaving ? <Loader2 className="animate-spin" size={20} /> : t('confirm')}</button>
                                 <button onClick={() => setShowLeaveConfirm(false)} disabled={isLeaving} className="w-full py-3 text-slate-400 font-bold hover:text-slate-600 transition-colors">ביטול</button>
                             </div>
                         </div>

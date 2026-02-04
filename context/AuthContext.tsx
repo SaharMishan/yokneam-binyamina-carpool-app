@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { auth, db, dbInstance, authInstance } from '../services/firebase';
+import { auth, db, dbInstance } from '../services/firebase';
 import { UserProfile } from '../types';
 import { setDoc, doc, onSnapshot, getDoc, serverTimestamp } from 'firebase/firestore';
 
@@ -19,13 +19,42 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// מנהל העל הבלעדי של המערכת (Master Admin)
 export const MASTER_EMAIL = 'saharmish93@gmail.com';
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<UserProfile | null>(null);
     const [firebaseUser, setFirebaseUser] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+
+    const syncUserProfile = async (loggedInUser: any) => {
+        if (!loggedInUser) return;
+        const userDocRef = doc(dbInstance, 'users', loggedInUser.uid);
+        const userDoc = await getDoc(userDocRef);
+        
+        const isMaster = loggedInUser.email?.toLowerCase() === MASTER_EMAIL.toLowerCase();
+
+        if (!userDoc.exists()) {
+            const newUserProfile: UserProfile = {
+                uid: loggedInUser.uid,
+                displayName: loggedInUser.displayName || 'Guest',
+                displayNameEn: null,
+                email: loggedInUser.email?.toLowerCase().trim() || null,
+                phoneNumber: '',
+                photoURL: loggedInUser.photoURL || '',
+                isAdmin: isMaster,
+                createdAt: serverTimestamp() as any,
+                privacySettings: { profileVisibility: 'public', notificationsEnabled: true }
+            };
+            await setDoc(userDocRef, newUserProfile);
+        } else {
+            // Update existing profile with latest info from provider if needed, but don't overwrite custom data
+            await setDoc(userDocRef, {
+                email: loggedInUser.email?.toLowerCase().trim(),
+                photoURL: loggedInUser.photoURL || userDoc.data().photoURL || '',
+                isAdmin: isMaster || userDoc.data().isAdmin
+            }, { merge: true });
+        }
+    };
 
     useEffect(() => {
         let unsubscribeProfile: (() => void) | null = null;
@@ -40,30 +69,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 setFirebaseUser(currentFirebaseUser);
                 const isMaster = currentFirebaseUser.email?.toLowerCase() === MASTER_EMAIL.toLowerCase();
                 
-                // BOOTSTRAP: סנכרון מאולץ עבור מנהל העל
-                if (isMaster) {
-                    try {
-                        const masterRef = doc(dbInstance, 'users', currentFirebaseUser.uid);
-                        await setDoc(masterRef, { 
-                            isAdmin: true,
-                            email: currentFirebaseUser.email,
-                            uid: currentFirebaseUser.uid
-                        }, { merge: true });
-                    } catch (e) {
-                        console.error("Master Admin bootstrap failed", e);
-                    }
-                }
-
                 const docRef = doc(dbInstance, 'users', currentFirebaseUser.uid);
                 unsubscribeProfile = onSnapshot(docRef, (docSnap) => {
                     if (docSnap.exists()) {
                         setUser({ ...docSnap.data(), uid: docSnap.id } as UserProfile);
                     } else {
-                        // אם המשתמש מחובר ב-Auth אבל אין לו מסמך (קורה לפעמים בשינויי דאטהבייס)
                         const shell: UserProfile = {
                             uid: currentFirebaseUser.uid,
                             displayName: currentFirebaseUser.displayName || 'Guest',
-                            email: currentFirebaseUser.email,
+                            email: currentFirebaseUser.email?.toLowerCase().trim() || null,
                             phoneNumber: '',
                             photoURL: currentFirebaseUser.photoURL || '',
                             isAdmin: isMaster, 
@@ -71,9 +85,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                         };
                         setUser(shell);
                     }
-                    setLoading(false);
-                }, (error) => {
-                    console.error("Profile Sync Error", error);
                     setLoading(false);
                 });
             } else {
@@ -91,45 +102,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const signInWithGoogle = async () => {
         const result = await auth.signInWithGoogle() as any;
-        const loggedInUser = result.user;
-        
-        if (loggedInUser) {
-            // בדיקה האם קיים פרופיל ב-Firestore
-            const userDocRef = doc(dbInstance, 'users', loggedInUser.uid);
-            const userDoc = await getDoc(userDocRef);
-            
-            if (!userDoc.exists()) {
-                // יצירת פרופיל חדש על בסיס הנתונים מגוגל
-                const isMaster = loggedInUser.email?.toLowerCase() === MASTER_EMAIL.toLowerCase();
-                const newUserProfile: UserProfile = {
-                    uid: loggedInUser.uid,
-                    displayName: loggedInUser.displayName || 'Guest',
-                    displayNameEn: null, // גוגל לא נותן הפרדה, המשתמש יוכל לעדכן בפרופיל
-                    email: loggedInUser.email,
-                    phoneNumber: '', // גוגל לרוב לא נותן טלפון, המשתמש יתבקש להשלים
-                    photoURL: loggedInUser.photoURL || '',
-                    isAdmin: isMaster,
-                    createdAt: serverTimestamp() as any,
-                    privacySettings: { profileVisibility: 'public', notificationsEnabled: true }
-                };
-                await setDoc(userDocRef, newUserProfile);
-            }
-        }
+        if (result?.user) await syncUserProfile(result.user);
     };
-    
+
     const signInWithEmail = async (email: string, pass: string) => {
-        await auth.signInWithEmailAndPassword(email, pass);
+        const cleanEmail = email.toLowerCase().trim();
+        await auth.signInWithEmailAndPassword(cleanEmail, pass);
     };
 
     const registerWithEmail = async (name: string, phone: string, email: string, pass: string, nameEn?: string) => {
-        const { user: newFirebaseUser } = await auth.createUserWithEmailAndPassword(email, pass) as { user: any };
+        const cleanEmail = email.toLowerCase().trim();
+        const { user: newFirebaseUser } = await auth.createUserWithEmailAndPassword(cleanEmail, pass) as { user: any };
         if (newFirebaseUser) {
-            const isMaster = email.toLowerCase() === MASTER_EMAIL.toLowerCase();
+            const isMaster = cleanEmail === MASTER_EMAIL.toLowerCase();
             const newUserProfile: UserProfile = {
                 uid: newFirebaseUser.uid,
                 displayName: name,
                 displayNameEn: nameEn || null,
-                email: email,
+                email: cleanEmail,
                 phoneNumber: phone,
                 isAdmin: isMaster,
                 createdAt: serverTimestamp() as any,
@@ -149,17 +139,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const updateProfile = async (data: Partial<UserProfile>) => {
         if (!user) return;
+        if (data.email) data.email = data.email.toLowerCase().trim();
         await db.updateUserProfile(user.uid, data);
     };
 
     const sendPasswordReset = async (email: string) => {
-        await auth.sendPasswordResetEmail(email);
+        await auth.sendPasswordResetEmail(email.toLowerCase().trim());
     };
 
     const signOut = async () => {
+        setLoading(true);
         await auth.signOut();
         setFirebaseUser(null);
         setUser(null);
+        setLoading(false);
     };
 
     const value = { user, firebaseUser, loading, signInWithGoogle, signOut, completeUserProfile, updateProfile, signInWithEmail, registerWithEmail, sendPasswordReset };
@@ -169,6 +162,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
 export const useAuth = () => {
     const context = useContext(AuthContext);
-    if (context === undefined) throw new Error('useAuth must be used within an AuthProvider');
+    if (context === undefined) throw new Error('useAuth error');
     return context;
 };

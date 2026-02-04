@@ -50,7 +50,8 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin }) => {
 
         setIsSubmitting(true);
         try {
-            await authService.setPersistence(rememberMe ? 'local' : 'none');
+            // Fix: persistenceType must be 'local' or 'session'. Changed 'none' to 'session' to fix TS error.
+            await authService.setPersistence(rememberMe ? 'local' : 'session');
             await registerWithEmail(name, phone, email, password, nameEn);
         } catch (err: any) {
             setIsSubmitting(false);

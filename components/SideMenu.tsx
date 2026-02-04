@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { memo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLocalization } from '../context/LocalizationContext';
 import { X, Home, Calendar, User, Info, LogOut, ChevronRight, Settings, CarFront, ShieldCheck, Flag, Download } from 'lucide-react';
@@ -126,6 +126,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, currentView, setVi
                             : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium'
                         }`}
                     >
+                        {/* Fix: item.icon replaced with Info as item is not in scope here */}
                         <Info size={20} className={currentView === 'about' ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400"} />
                         <span className="text-base">{t('menu_about')}</span>
                         {dir === 'rtl' ? <ChevronRight size={16} className="mr-auto opacity-30 rotate-180" /> : <ChevronRight size={16} className="ml-auto opacity-30" />}
@@ -141,7 +142,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, currentView, setVi
                         <span>{t('logout')}</span>
                     </button>
                     <div className="text-center mt-4 space-y-1">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">v1.8.5 • Yokneam-Binyamina</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">v1.9.0 • Yokneam-Binyamina</p>
                         <p className="text-[9px] font-bold text-slate-400 opacity-60">© All Rights Reserved to Sahar Mishan</p>
                     </div>
                 </div>
@@ -155,7 +156,8 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, currentView, setVi
 
     return (
         <div className="fixed inset-0 z-[100] flex md:hidden">
-            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] animate-fade-in" onClick={onClose}></div>
+            {/* Reduced blur on mobile overlay for better performance */}
+            <div className="absolute inset-0 bg-slate-900/40 animate-fade-in" onClick={onClose}></div>
             
             <div dir={dir} className={drawerClasses}>
                 <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 shrink-0">
@@ -219,7 +221,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, currentView, setVi
                         <span>{t('logout')}</span>
                     </button>
                     <div className="text-center mt-4 space-y-1">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">v1.8.5 • Yokneam-Binyamina</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">v1.9.0 • Yokneam-Binyamina</p>
                         <p className="text-[9px] font-bold text-slate-400 opacity-60">© All Rights Reserved to Sahar Mishan</p>
                     </div>
                 </div>
@@ -228,4 +230,5 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, currentView, setVi
     );
 };
 
-export default SideMenu;
+const SideMenuMemo = memo(SideMenu);
+export default SideMenuMemo;

@@ -1,11 +1,11 @@
 
-import React, { useState, useEffect, useMemo, memo } from 'react';
+import React, { useState, useEffect, useMemo, memo, useCallback } from 'react';
 import { dbInstance } from '../services/firebase';
 import { Trip, Direction, TripType } from '../types';
 import TripCard from './TripCard';
 import { useLocalization } from '../context/LocalizationContext';
 import { CarFront, Clock, X, Users, UserCheck } from 'lucide-react';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, limit } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import TimePickerModal from './TimePickerModal';
 
@@ -45,21 +45,23 @@ const TripList: React.FC<TripListProps> = ({ direction, setDirection, onPostTrip
     const [filterTime, setFilterTime] = useState<string>('');
     const [isTimePickerOpen, setIsTimePickerOpen] = useState(false);
 
-    // NEW: "Heartbeat" state to force re-calculation of expired trips every minute
+    // Optimized heartbeat - check every 2 minutes instead of 1 to save mobile CPU
     const [currentTime, setCurrentTime] = useState(Date.now());
 
     useEffect(() => {
         const interval = setInterval(() => {
             setCurrentTime(Date.now());
-        }, 60000); // Check every 60 seconds
+        }, 120000); 
         return () => clearInterval(interval);
     }, []);
 
     useEffect(() => {
         setLoading(true);
+        // Only fetch future-ish trips (limit 150 for efficiency)
         const q = query(
             collection(dbInstance, 'trips'),
-            where('direction', '==', direction)
+            where('direction', '==', direction),
+            limit(150)
         );
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -90,7 +92,6 @@ const TripList: React.FC<TripListProps> = ({ direction, setDirection, onPostTrip
             const tripDate = trip.departureTime.toDate();
             const tripTimeMillis = trip.departureTime.toMillis();
             
-            // USE currentTime from state to ensure this updates live
             if (currentTime > tripTimeMillis + thirtyMinsInMs) return false;
 
             const nowObj = new Date(currentTime);
@@ -110,7 +111,7 @@ const TripList: React.FC<TripListProps> = ({ direction, setDirection, onPostTrip
 
             return true;
         });
-    }, [trips, activeTab, filterDay, filterTime, currentTime, user?.uid]);
+    }, [trips, activeTab, filterDay, filterTime, currentTime]);
 
     const grouped = useMemo(() => {
         const groups: { [key: string]: Trip[] } = { today: [], tomorrow: [], upcoming: [] };
@@ -249,4 +250,5 @@ const TripList: React.FC<TripListProps> = ({ direction, setDirection, onPostTrip
     );
 };
 
-export default TripList;
+const TripListMemo = memo(TripList);
+export default TripListMemo;
