@@ -16,14 +16,12 @@ const GlobalNotifier: React.FC = () => {
     useEffect(() => {
         if (!user || notifications.length === 0) return;
 
-        // Find the newest unread notification that hasn't been shown in this session
         const newest = notifications.find(n => !n.isRead && n.type !== 'info' && !shownToastIds.current.has(n.id));
         
         if (newest) {
             const now = Date.now();
             const notifTime = newest.createdAt?.toMillis() || 0;
             
-            // Only show toast if it's "fresh" (last 2 minutes)
             if (notifTime > now - 120000) {
                 setActiveToast(newest);
                 shownToastIds.current.add(newest.id);
@@ -50,7 +48,7 @@ const GlobalNotifier: React.FC = () => {
     if (activeSystemMessage) {
         return (
             <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-md animate-fade-in">
-                <div className="bg-white dark:bg-slate-900 w-full max-sm rounded-[2.5rem] shadow-2xl overflow-hidden border border-white/10 animate-scale-in relative">
+                <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2.5rem] shadow-2xl overflow-hidden border border-white/10 animate-scale-in relative">
                     <div className="h-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-blue-600 w-full"></div>
                     
                     <div className="p-8 flex flex-col items-center text-center">

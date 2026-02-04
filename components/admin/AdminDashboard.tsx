@@ -165,7 +165,7 @@ const AdminDashboard: React.FC = () => {
                 </div>
             </div>
 
-            {/* Navigation Grid (3x2 on Mobile, Flex on Desktop) */}
+            {/* Navigation Grid */}
             <div className="grid grid-cols-3 gap-2 md:flex md:flex-row bg-slate-100/50 dark:bg-slate-800/50 p-2 rounded-[2rem] mb-8 shadow-inner mx-4">
                 {tabs.map(tab => (
                     <button 
@@ -208,7 +208,7 @@ const AdminDashboard: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Health Section (Integrated into Dashboard) */}
+                        {/* Health Section */}
                         <div className="space-y-4">
                             <div className="flex items-center gap-2 px-1">
                                 <Zap size={14} className="text-amber-500" />
@@ -325,7 +325,6 @@ const AdminDashboard: React.FC = () => {
 
                 {activeTab === 'trips' && (
                     <div className="space-y-4 animate-fade-in">
-                        {/* Type Selector (Offers/Requests) */}
                         <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl shadow-inner gap-1">
                              <button 
                                 onClick={() => setFilterTripType('offer')} 
@@ -343,7 +342,6 @@ const AdminDashboard: React.FC = () => {
                              </button>
                         </div>
 
-                        {/* Status Filter */}
                         <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl shadow-inner">
                              {(['all', 'active', 'closed'] as const).map((st) => (
                                  <button key={st} onClick={() => setFilterTripStatus(st)} className={`flex-1 py-3 text-[9px] font-black uppercase rounded-xl transition-all ${filterTripStatus === st ? 'bg-white dark:bg-slate-700 text-indigo-600 shadow-md' : 'text-slate-500'}`}>
@@ -487,7 +485,7 @@ const AdminDashboard: React.FC = () => {
             {confirmDelete && (
                 <Portal>
                     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/95 backdrop-blur-md animate-fade-in" onClick={() => !isDeletingAction && setConfirmDelete(null)}>
-                        <div className="bg-white dark:bg-slate-900 w-full max-sm rounded-[2.5rem] shadow-2xl overflow-hidden border border-white/10 animate-scale-in relative" onClick={e => e.stopPropagation()}>
+                        <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2.5rem] shadow-2xl overflow-hidden border border-white/10 animate-scale-in relative" onClick={e => e.stopPropagation()}>
                             <div className="p-8 flex flex-col items-center text-center">
                                 <div className="w-20 h-20 bg-red-50 dark:bg-red-900/20 rounded-full flex items-center justify-center text-red-600 mb-6 ring-8 ring-red-50/50 dark:ring-red-900/10">
                                     <AlertTriangle size={44} />
@@ -530,7 +528,7 @@ const AdminDashboard: React.FC = () => {
             {showPreview && (
                 <Portal>
                     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-md animate-fade-in" onClick={() => setShowPreview(false)}>
-                        <div className="bg-white dark:bg-slate-900 w-full max-sm rounded-[2.5rem] shadow-2xl overflow-hidden border border-white/10 animate-scale-in relative" onClick={e => e.stopPropagation()}>
+                        <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2.5rem] shadow-2xl overflow-hidden border border-white/10 animate-scale-in relative" onClick={e => e.stopPropagation()}>
                             <div className="h-2 bg-gradient-to-r from-indigo-500 via-purple-500 to-blue-600 w-full"></div>
                             <div className="p-8 flex flex-col items-center text-center">
                                 <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-900/30 rounded-full flex items-center justify-center text-indigo-600 dark:text-indigo-400 mb-6">

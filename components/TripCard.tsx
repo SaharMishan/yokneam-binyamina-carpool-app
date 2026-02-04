@@ -286,13 +286,11 @@ const TripCard: React.FC<TripCardProps> = ({ trip, onEdit, onPostTripClick }) =>
                     </div>
                 </div>
 
-                {/* Status Banner - Redesigned to be more creative and visible without overlapping */}
+                {/* Status Banner */}
                 {isClosed && !isRequest && (
                     <div className="mb-4 animate-scale-in">
                         <div className={`relative overflow-hidden w-full py-2.5 px-4 rounded-2xl flex items-center justify-center gap-2 shadow-sm border ${isFull && !trip.isClosed ? 'bg-amber-500/10 border-amber-200/50 text-amber-600' : 'bg-slate-900 border-slate-800 text-white'}`}>
-                            {/* Inner background glow effect */}
                             <div className={`absolute inset-0 opacity-20 ${isFull && !trip.isClosed ? 'bg-amber-400 animate-pulse' : 'bg-indigo-500'}`}></div>
-                            
                             <div className="relative z-10 flex items-center gap-2">
                                 {isFull && !trip.isClosed ? (
                                     <>
@@ -455,7 +453,7 @@ const TripCard: React.FC<TripCardProps> = ({ trip, onEdit, onPostTripClick }) =>
             {showDeleteConfirm && (
                 <Portal>
                     <div className="fixed inset-0 z-[300] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in" onClick={() => !isDeleting && setShowDeleteConfirm(false)}>
-                        <div className="bg-white dark:bg-slate-900 w-full max-sm rounded-[2.5rem] shadow-2xl overflow-hidden border border-white/10 animate-scale-in p-8 text-center" onClick={e => e.stopPropagation()}>
+                        <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2.5rem] shadow-2xl overflow-hidden border border-white/10 animate-scale-in p-8 text-center" onClick={e => e.stopPropagation()}>
                             <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mb-6 mx-auto"><Trash2 size={32} className="text-rose-500" /></div>
                             <h4 className="text-xl font-black text-slate-900 dark:text-white mb-2">מחיקת {isRequest ? 'בקשה' : 'נסיעה'}</h4>
                             <p className="text-sm font-bold text-slate-500 mb-8 leading-relaxed">{t('cancel_trip_confirm')}</p>
@@ -471,7 +469,7 @@ const TripCard: React.FC<TripCardProps> = ({ trip, onEdit, onPostTripClick }) =>
             {showLeaveConfirm && (
                 <Portal>
                     <div className="fixed inset-0 z-[300] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in" onClick={() => !isLeaving && setShowLeaveConfirm(false)}>
-                        <div className="bg-white dark:bg-slate-900 w-full max-sm rounded-[2.5rem] shadow-2xl overflow-hidden border border-white/10 animate-scale-in p-8 text-center" onClick={e => e.stopPropagation()}>
+                        <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2.5rem] shadow-2xl overflow-hidden border border-white/10 animate-scale-in p-8 text-center" onClick={e => e.stopPropagation()}>
                             <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center mb-6 mx-auto"><AlertTriangle size={32} className="text-amber-500" /></div>
                             <h4 className="text-xl font-black text-slate-900 dark:text-white mb-2">{t('leave_ride_modal_title')}</h4>
                             <p className="text-sm font-bold text-slate-500 mb-8 leading-relaxed">{t('leave_ride_modal_confirm_msg')}</p>
