@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'carpool-v1.9.3';
+const CACHE_NAME = 'carpool-v1.9.4';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
