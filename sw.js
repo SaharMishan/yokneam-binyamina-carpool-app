@@ -1,11 +1,11 @@
 
-const CACHE_NAME = 'carpool-v1.9.4';
+const CACHE_NAME = 'carpool-v1.9.5';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   'https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;800;900&display=swap',
-  'https://cdn-icons-png.flaticon.com/512/5488/5488668.png'
+  'https://cdn-icons-png.flaticon.com/512/3202/3202926.png'
 ];
 
 // שלב ההתקנה - שמירת נכסים סטטיים בסיסיים
