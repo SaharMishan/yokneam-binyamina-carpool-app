@@ -42,7 +42,12 @@ const translations: Translations = {
         request_status_title: 'Your Request Status',
         share_trip: 'Share',
         share_message_offer: 'Hi! I am driving {direction} on {date} at {time}. Join me: {link}',
-        share_message_request: 'Hi! I am looking for a ride {direction} on {date} at {time}. Anyone going? {link}'
+        share_message_request: 'Hi! I am looking for a ride {direction} on {date} at {time}. Anyone going? {link}',
+        remove_passenger_confirm_title: 'Remove Passenger',
+        remove_passenger_confirm_msg: 'Are you sure you want to remove {name} from the ride?',
+        confirm_remove: 'Remove',
+        notif_removed_title: 'Removed from Ride',
+        notif_removed_msg: 'The driver has removed you from the scheduled ride.'
     },
     he: {
         app_title: 'קארפול יקנעם-בנימינה',
@@ -282,8 +287,11 @@ const translations: Translations = {
         share_message_request: 'היי! אני מחפש נסיעה {direction} בשעה {time} בתאריך {date}. מישהו בדרך? {link}',
         leave_ride_modal_title: 'עזיבת נסיעה',
         leave_ride_modal_confirm_msg: 'האם אתם בטוחים שברצונכם לעזוב את הנסיעה?',
-        remove_passenger_modal_content: 'האם להסיר את {name} מהנסיעה?',
-        remove_passenger_confirm_button: 'כן, הסר נוסע',
+        remove_passenger_confirm_title: 'הסרת נוסע',
+        remove_passenger_confirm_msg: 'האם אתם בטוחים שברצונכם להסיר את {name} מהנסיעה?',
+        confirm_remove: 'כן, הסר',
+        notif_removed_title: 'הוסרת מהנסיעה',
+        notif_removed_msg: 'הנהג הסיר אותך מהנסיעה המתוכננת.',
         notif_join_msg: '{name} ביקש/ה להצטרף לנסיעה שלך',
         notif_approved_title: 'בקשתך אושרה!',
         notif_approved_msg: 'הנהג אישר את הצטרפותך לנסיעה. פרטי הקשר זמינים כעת.',

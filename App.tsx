@@ -21,6 +21,48 @@ import InstallInstructions from './components/InstallInstructions';
 import InstallGuide from './components/InstallGuide';
 import { Direction, Trip } from './types';
 import { db } from './services/firebase';
+import { CarFront, Cloud } from 'lucide-react';
+
+const CoolLoader = ({ message }: { message: string }) => (
+    <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 overflow-hidden">
+        {/* Background Clouds */}
+        <div className="absolute top-20 left-0 w-full opacity-20 pointer-events-none">
+            <div className="absolute left-[10%] animate-cloud-drift" style={{ animationDelay: '0s' }}><Cloud size={40} className="text-indigo-400" /></div>
+            <div className="absolute left-[40%] animate-cloud-drift" style={{ animationDelay: '5s' }}><Cloud size={60} className="text-blue-400" /></div>
+            <div className="absolute left-[70%] animate-cloud-drift" style={{ animationDelay: '2s' }}><Cloud size={30} className="text-indigo-300" /></div>
+        </div>
+
+        <div className="relative flex flex-col items-center">
+            {/* Pulsing Light behind car */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-indigo-500/20 rounded-full blur-3xl animate-pulse-soft"></div>
+            
+            {/* The Car */}
+            <div className="relative z-10 animate-car-bounce">
+                <div className="bg-gradient-to-tr from-indigo-600 to-blue-500 p-5 rounded-[1.8rem] shadow-2xl shadow-indigo-500/40 border-4 border-white dark:border-slate-800 text-white">
+                    <CarFront size={64} strokeWidth={1.5} />
+                </div>
+            </div>
+
+            {/* Scrolling Road */}
+            <div className="mt-6 w-32 h-1 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden relative">
+                <div className="absolute inset-0 animate-road-scroll animate-road"></div>
+            </div>
+
+            <div className="mt-8 flex flex-col items-center gap-3">
+                <p className="text-lg font-black text-slate-800 dark:text-white tracking-tight uppercase">{message}</p>
+                <div className="flex gap-1.5">
+                    <span className="w-2 h-2 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></span>
+                    <span className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></span>
+                    <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></span>
+                </div>
+            </div>
+        </div>
+
+        <div className="absolute bottom-10 text-center opacity-30">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">קארפול יקנעם-בנימינה</p>
+        </div>
+    </div>
+);
 
 const GlobalBackground = () => (
     <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden select-none">
@@ -80,12 +122,7 @@ const AppContent = () => {
     }, []);
 
     if (loading || isCheckingDeepLink) {
-        return (
-            <div className="flex flex-col items-center justify-center w-full h-[100dvh] bg-slate-50 dark:bg-slate-900">
-                <div className="w-10 h-10 border-4 border-indigo-600/20 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
-                <p className="text-sm font-bold text-slate-500 animate-pulse">{isCheckingDeepLink ? 'טוען נסיעה ששותפה...' : 'מתחבר למערכת...'}</p>
-            </div>
-        );
+        return <CoolLoader message={isCheckingDeepLink ? 'טוען נסיעה ששותפה...' : 'מתחבר למערכת...'} />;
     }
 
     if (!user) return <AuthGate />;

@@ -10,7 +10,7 @@ export interface UserProfile {
     photoURL?: string;
     isAdmin?: boolean;
     createdAt?: Timestamp;
-    privacySettings?: {
+    privacySettings: {
         profileVisibility: 'public' | 'private';
         notificationsEnabled: boolean;
     };
@@ -89,11 +89,13 @@ export interface ChatMessage {
     senderName: string;
     text?: string;
     imageUrl?: string;
+    audioUrl?: string;
+    audioDuration?: number;
     location?: {
         lat: number;
         lng: number;
     };
-    type: 'text' | 'image' | 'location';
+    type: 'text' | 'image' | 'location' | 'audio';
     createdAt: Timestamp;
 }
 

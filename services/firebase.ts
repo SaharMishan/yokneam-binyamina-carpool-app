@@ -41,27 +41,19 @@ import { Trip, UserProfile, Direction, AppNotification, Passenger, Report, ChatM
 
 /**
  * פונקציית עזר לניקוי ערכי env ממרכאות כפולות, רווחים או תווים נסתרים (\r, \n).
- * לעיתים מפתחות API מגיעים עם מרכאות מהקובץ או מהשרת וזה גורם לשגיאת auth/invalid-credential.
  */
 const cleanEnvValue = (val: any): string => {
     if (!val || typeof val !== 'string' || val === 'undefined' || val === 'null') return "";
-    // הסרת כל סוגי המרכאות, תווים לבנים ורווחים בכל מקום במחרוזת (חשוב למפתח API)
     return val.replace(/["']/g, '').replace(/\s/g, '').trim();
 };
 
-/**
- * פונקציה לקבלת ערכי סביבה באופן בטוח.
- */
 const getEnvVar = (key: string, hardcoded: string): string => {
     try {
-        // עדיפות 1: process.env (עבור סביבות ריצה מודרניות)
         if (typeof process !== 'undefined' && (process as any).env?.[key]) {
             return cleanEnvValue((process as any).env[key]);
         }
-        // עדיפות 2: window.process (סביבות דפדפן מסוימות)
         const wpEnv = (window as any).process?.env?.[key];
         if (wpEnv) return cleanEnvValue(wpEnv);
-        // עדיפות 3: import.meta.env (Vite)
         const mEnv = (import.meta as any).env?.[key];
         if (mEnv) return cleanEnvValue(mEnv);
     } catch (e) {}
@@ -84,7 +76,6 @@ export const authInstance = getAuth(app);
 export const dbInstance = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
 
-// נירמול אימייל למניעת שגיאות רווחים או אותיות גדולות שגורמות לכישלון אימות
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
 export const auth = {
@@ -204,6 +195,31 @@ export const db = {
                 type: 'info',
                 title: 'notif_rejected_title',
                 message: 'notif_rejected_msg',
+                relatedTripId: tripId,
+                isRead: false,
+                createdAt: serverTimestamp()
+            });
+        });
+    },
+    removePassenger: async (tripId: string, passengerId: string): Promise<void> => {
+        const tripRef = doc(dbInstance, 'trips', tripId);
+        await runTransaction(dbInstance, async (transaction) => {
+            const tripDoc = await transaction.get(tripRef);
+            if (!tripDoc.exists()) throw new Error("Trip does not exist");
+            const data = tripDoc.data() as Trip;
+            const passenger = data.passengers.find(p => p.uid === passengerId);
+            if (!passenger) return;
+            const isApproved = passenger.status === 'approved';
+            const newPassengers = data.passengers.filter(p => p.uid !== passengerId);
+            const updates: any = { passengers: newPassengers };
+            if (isApproved) updates.availableSeats = increment(1);
+            transaction.update(tripRef, updates);
+            const notifRef = doc(collection(dbInstance, 'notifications'));
+            transaction.set(notifRef, {
+                userId: passengerId,
+                type: 'info',
+                title: 'notif_removed_title',
+                message: 'notif_removed_msg',
                 relatedTripId: tripId,
                 isRead: false,
                 createdAt: serverTimestamp()

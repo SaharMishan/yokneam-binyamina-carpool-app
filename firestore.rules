@@ -8,13 +8,15 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    // בדיקה אם המשתמש הוא אדמין רגיל (לפי המסמך שלו בדאטה בייס)
+    // בדיקה אם המשתמש הוא אדמין (לפי המסמך שלו בדאטה בייס)
+    // הוספת בדיקת קיום המסמך למניעת שגיאות הרשאה בזמן יצירת משתמש חדש
     function isAdmin() {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
     }
 
     // *** חוק הברזל של המנהל הראשי ***
-    // הרשאה זו עוקפת כל בדיקה אחרת. אם המייל תואם - יש גישה מלאה.
     function isMasterAdmin() {
        return isSignedIn() && request.auth.token.email == 'saharmish93@gmail.com';
     }
@@ -22,38 +24,29 @@ service cloud.firestore {
     match /trips/{tripId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn();
-      allow update, delete: if isMasterAdmin() || (isSignedIn() && (
+      allow update, delete: if isMasterAdmin() || isAdmin() || (isSignedIn() && (
         resource.data.driverId == request.auth.uid || 
-        isAdmin() ||
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['passengers', 'availableSeats'])
       ));
     }
 
     match /users/{userId} {
       allow read: if isSignedIn();
-      // המנהל הראשי יכול לערוך כל משתמש (כולל להפוך אותו לאדמין)
-      // משתמש יכול לערוך את עצמו
-      // אדמין רגיל לא יכול לשנות פרטי משתמשים אחרים (למעט אולי מחיקה אם נגדיר)
       allow write: if isMasterAdmin() || (isSignedIn() && request.auth.uid == userId);
     }
 
     match /notifications/{notifId} {
-      // Create is open to allow users to trigger notifications for others (e.g. join requests)
-      // Broadcast works because Master Admin writes batch notifications.
       allow create: if isSignedIn();
-      allow read, update, delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isMasterAdmin());
+      allow read, update, delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isMasterAdmin() || isAdmin());
     }
     
-    // אוסף חדש להודעות גלובליות (Broadcast)
     match /system_announcements/{msgId} {
-      allow read: if isSignedIn(); // כולם יכולים לקרוא
-      allow write: if isAdmin() || isMasterAdmin(); // רק מנהלים יכולים לפרסם
+      allow read: if isSignedIn(); 
+      allow write: if isAdmin() || isMasterAdmin();
     }
 
     match /reports/{reportId} {
-      // Anyone signed in can create a report
       allow create: if isSignedIn();
-      // Only admins can view/manage reports
       allow read, update, delete: if isAdmin() || isMasterAdmin();
     }
     

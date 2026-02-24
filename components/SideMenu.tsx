@@ -20,18 +20,20 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, currentView, setVi
     const { t, dir, language } = useLocalization();
 
     const handleNavigation = (view: string) => {
-        setView(view);
+        // Close menu first to prevent laggy perception
         if (!isDesktop) onClose();
+        // Use a small timeout to let the drawer begin closing before heavy re-render
+        setTimeout(() => setView(view), isDesktop ? 0 : 50);
     };
 
     const handleReportClick = () => {
-        onOpenReport();
         if (!isDesktop) onClose();
+        onOpenReport();
     };
 
     const handleInstallClick = () => {
-        onOpenInstall();
         if (!isDesktop) onClose();
+        onOpenInstall();
     };
 
     const menuItems = [
@@ -48,7 +50,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, currentView, setVi
     const InstallButton = () => (
         <button
             onClick={handleInstallClick}
-            className="w-full flex items-center gap-4 p-3.5 rounded-xl transition-all duration-200 bg-indigo-600 text-white font-black shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 active:scale-95 my-2"
+            className="w-full flex items-center gap-4 p-3.5 rounded-xl transition-all duration-200 bg-indigo-600 text-white font-black shadow-lg shadow-indigo-500/30 hover:bg-indigo-700 active:scale-95 my-2 touch-manipulation"
         >
             <Download size={20} />
             <span className="text-sm uppercase tracking-wider">{t('menu_install')}</span>
@@ -60,7 +62,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, currentView, setVi
         return (
             <button 
                 onClick={() => handleNavigation('profile')}
-                className="w-full flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 mt-4 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 hover:border-indigo-200 dark:hover:border-indigo-800 transition-all text-start group active:scale-[0.98] shadow-sm"
+                className="w-full flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 mt-4 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 hover:border-indigo-200 dark:hover:border-indigo-800 transition-all text-start group active:scale-[0.98] shadow-sm touch-manipulation"
             >
                 <div className="w-11 h-11 rounded-full bg-indigo-50 dark:bg-indigo-900/30 overflow-hidden flex items-center justify-center text-indigo-600 dark:text-indigo-200 font-bold shadow-md border-2 border-white dark:border-slate-700 shrink-0 group-hover:scale-105 transition-transform">
                     {user.photoURL ? (
@@ -98,7 +100,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, currentView, setVi
                         <button
                             key={item.id}
                             onClick={() => handleNavigation(item.id)}
-                            className={`w-full flex items-center gap-4 p-3.5 rounded-xl transition-all duration-200 ${
+                            className={`w-full flex items-center gap-4 p-3.5 rounded-xl transition-all duration-200 touch-manipulation ${
                                 currentView === item.id
                                 ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold shadow-sm'
                                 : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium'
@@ -112,7 +114,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, currentView, setVi
                     
                     <button
                         onClick={handleReportClick}
-                        className="w-full flex items-center gap-4 p-3.5 rounded-xl transition-all duration-200 text-slate-600 dark:text-slate-300 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-600 font-medium mt-4 border-t border-slate-100 dark:border-slate-800"
+                        className="w-full flex items-center gap-4 p-3.5 rounded-xl transition-all duration-200 text-slate-600 dark:text-slate-300 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-600 font-medium mt-4 border-t border-slate-100 dark:border-slate-800 touch-manipulation"
                     >
                         <Flag size={20} className="text-slate-400" />
                         <span className="text-base">{t('report_issue')}</span>
@@ -120,13 +122,12 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, currentView, setVi
 
                     <button
                         onClick={() => handleNavigation('about')}
-                        className={`w-full flex items-center gap-4 p-3.5 rounded-xl transition-all duration-200 ${
+                        className={`w-full flex items-center gap-4 p-3.5 rounded-xl transition-all duration-200 touch-manipulation ${
                             currentView === 'about'
                             ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold shadow-sm'
                             : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium'
                         }`}
                     >
-                        {/* Fix: item.icon replaced with Info as item is not in scope here */}
                         <Info size={20} className={currentView === 'about' ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400"} />
                         <span className="text-base">{t('menu_about')}</span>
                         {dir === 'rtl' ? <ChevronRight size={16} className="mr-auto opacity-30 rotate-180" /> : <ChevronRight size={16} className="ml-auto opacity-30" />}
@@ -136,7 +137,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, currentView, setVi
                  <div className="p-6 border-t border-slate-100 dark:border-slate-800">
                     <button 
                         onClick={signOut}
-                        className="w-full flex items-center justify-center gap-2 p-3 text-red-600 dark:text-red-400 font-bold bg-red-50 dark:bg-red-900/10 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-xl transition-colors"
+                        className="w-full flex items-center justify-center gap-2 p-3 text-red-600 dark:text-red-400 font-bold bg-red-50 dark:bg-red-900/10 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-xl transition-colors touch-manipulation"
                     >
                         <LogOut size={20} />
                         <span>{t('logout')}</span>
@@ -156,15 +157,15 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, currentView, setVi
 
     return (
         <div className="fixed inset-0 z-[100] flex md:hidden">
-            {/* Reduced blur on mobile overlay for better performance */}
-            <div className="absolute inset-0 bg-slate-900/40 animate-fade-in" onClick={onClose}></div>
+            {/* Overlay */}
+            <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px] animate-fade-in touch-none" onClick={onClose}></div>
             
             <div dir={dir} className={drawerClasses}>
                 <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 shrink-0">
                     <div className="flex items-center justify-between mb-8">
                         <div 
                             onClick={() => handleNavigation('home')} 
-                            className="flex items-center gap-2.5 cursor-pointer active:opacity-80 transition-opacity min-w-0 flex-1"
+                            className="flex items-center gap-2.5 cursor-pointer active:opacity-80 transition-opacity min-w-0 flex-1 touch-manipulation"
                         >
                             <div className="bg-gradient-to-tr from-blue-600 to-indigo-600 text-white p-2 rounded-xl shadow-lg shrink-0">
                                 <CarFront size={18} className="text-white" />
@@ -175,7 +176,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, currentView, setVi
                         </div>
                         <button 
                             onClick={onClose} 
-                            className="p-2 bg-white dark:bg-slate-800 shadow-md rounded-full text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all border border-slate-100 dark:border-slate-700 shrink-0 active:scale-90 ml-2"
+                            className="p-2 bg-white dark:bg-slate-800 shadow-md rounded-full text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all border border-slate-100 dark:border-slate-700 shrink-0 active:scale-90 ml-2 touch-manipulation"
                         >
                             <X size={16} />
                         </button>
@@ -191,7 +192,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, currentView, setVi
                         <button
                             key={item.id}
                             onClick={() => handleNavigation(item.id)}
-                            className={`w-full flex items-center gap-4 p-4 rounded-xl transition-all duration-200 ${
+                            className={`w-full flex items-center gap-4 p-4 rounded-xl transition-all duration-200 touch-manipulation ${
                                 currentView === item.id
                                 ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold shadow-sm'
                                 : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium'
@@ -203,12 +204,12 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, currentView, setVi
                         </button>
                     ))}
 
-                    <button onClick={handleReportClick} className="w-full flex items-center gap-4 p-4 rounded-xl transition-all duration-200 text-slate-600 dark:text-slate-300 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-600 font-medium mt-4 border-t border-slate-100 dark:border-slate-800">
+                    <button onClick={handleReportClick} className="w-full flex items-center gap-4 p-4 rounded-xl transition-all duration-200 text-slate-600 dark:text-slate-300 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-600 font-medium mt-4 border-t border-slate-100 dark:border-slate-800 touch-manipulation">
                         <Flag size={22} className="text-slate-400" />
                         <span className="text-base">{t('report_issue')}</span>
                     </button>
 
-                    <button onClick={() => handleNavigation('about')} className={`w-full flex items-center gap-4 p-4 rounded-xl transition-all duration-200 ${currentView === 'about' ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium'}`}>
+                    <button onClick={() => handleNavigation('about')} className={`w-full flex items-center gap-4 p-4 rounded-xl transition-all duration-200 touch-manipulation ${currentView === 'about' ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium'}`}>
                         <Info size={22} className={currentView === 'about' ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400"} />
                         <span className="text-base">{t('menu_about')}</span>
                         {dir === 'rtl' ? <ChevronRight size={18} className="mr-auto opacity-30 rotate-180" /> : <ChevronRight size={18} className="ml-auto opacity-30" />}
@@ -216,7 +217,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, currentView, setVi
                 </div>
 
                 <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shrink-0">
-                    <button onClick={signOut} className="w-full flex items-center justify-center gap-2 p-3.5 text-red-600 dark:text-red-400 font-black bg-red-50 dark:bg-red-900/10 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-xl transition-all active:scale-95">
+                    <button onClick={signOut} className="w-full flex items-center justify-center gap-2 p-3.5 text-red-600 dark:text-red-400 font-black bg-red-50 dark:bg-red-900/10 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-xl transition-all active:scale-95 touch-manipulation">
                         <LogOut size={20} />
                         <span>{t('logout')}</span>
                     </button>

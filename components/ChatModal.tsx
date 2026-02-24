@@ -5,7 +5,7 @@ import { db, dbInstance } from '../services/firebase';
 import { useLocalization } from '../context/LocalizationContext';
 import { ChatMessage, Trip } from '../types';
 import { collection, query, where, onSnapshot, Timestamp, doc, orderBy } from 'firebase/firestore';
-import { X, Send, MessageCircle, MapPin, Camera, Image as ImageIcon, Loader2, Navigation, Map as MapIcon, AlertCircle, Lock, Info, Compass } from 'lucide-react';
+import { X, Send, MessageCircle, MapPin, Camera, Image as ImageIcon, Loader2, Navigation, Map as MapIcon, AlertCircle, Lock, Info, Compass, Mic, Square, Play, Pause, Trash2 } from 'lucide-react';
 import Portal from './Portal';
 
 interface ChatModalProps {
@@ -37,6 +37,125 @@ const GoogleMapsLogo = () => (
         <path fill="#5695f6" d="M28.24,22c0.79-0.95,1.26-2.17,1.26-3.5c0-3.04-2.46-5.5-5.5-5.5c-1.71,0-3.24,0.78-4.24,2L28.4,4.74 c3.59,1.22,6.53,3.91,8.17,7.38L28.24,22z"></path>
     </svg>
 );
+
+const AudioVisualizer: React.FC<{ stream: MediaStream }> = ({ stream }) => {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const animationRef = useRef<number>(null);
+
+    useEffect(() => {
+        if (!stream || !canvasRef.current) return;
+
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const analyser = audioContext.createAnalyser();
+        const source = audioContext.createMediaStreamSource(stream);
+        source.connect(analyser);
+
+        analyser.fftSize = 64;
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        const draw = () => {
+            animationRef.current = requestAnimationFrame(draw);
+            analyser.getByteFrequencyData(dataArray);
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const barWidth = (canvas.width / bufferLength) * 2;
+            let x = 0;
+
+            for (let i = 0; i < bufferLength; i++) {
+                const barHeight = (dataArray[i] / 255) * canvas.height;
+                ctx.fillStyle = `rgba(225, 29, 72, ${0.4 + (barHeight / canvas.height)})`; 
+                ctx.fillRect(x, canvas.height - barHeight, barWidth - 1, barHeight);
+                x += barWidth;
+            }
+        };
+
+        draw();
+
+        return () => {
+            if (animationRef.current) cancelAnimationFrame(animationRef.current);
+            if (audioContext.state !== 'closed') audioContext.close();
+        };
+    }, [stream]);
+
+    return <canvas ref={canvasRef} width={60} height={20} className="opacity-80 shrink-0" />;
+};
+
+const AudioPlayer: React.FC<{ url: string, duration?: number, isMe: boolean }> = ({ url, duration: savedDuration, isMe }) => {
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [currentTime, setCurrentTime] = useState(0);
+    const [actualDuration, setActualDuration] = useState(savedDuration || 0);
+    const audioRef = useRef<HTMLAudioElement>(null);
+
+    const togglePlay = () => {
+        if (!audioRef.current) return;
+        if (isPlaying) {
+            audioRef.current.pause();
+        } else {
+            audioRef.current.play();
+        }
+        setIsPlaying(!isPlaying);
+    };
+
+    const handleTimeUpdate = () => {
+        if (audioRef.current) {
+            setCurrentTime(audioRef.current.currentTime);
+        }
+    };
+
+    const handleLoadedMetadata = () => {
+        if (audioRef.current) {
+            // Use actual duration if available for high precision
+            if (audioRef.current.duration && audioRef.current.duration !== Infinity && !isNaN(audioRef.current.duration)) {
+                setActualDuration(audioRef.current.duration);
+            }
+        }
+    };
+
+    const handleEnded = () => {
+        setIsPlaying(false);
+        setCurrentTime(0);
+    };
+
+    const formatTime = (time: number) => {
+        if (isNaN(time) || time === Infinity) return "0:00";
+        const mins = Math.floor(time / 60);
+        const secs = Math.floor(time % 60);
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    const progress = actualDuration > 0 ? (currentTime / actualDuration) * 100 : 0;
+
+    return (
+        <div className={`flex items-center gap-3 py-2 px-3 rounded-2xl ${isMe ? 'bg-white/10 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200'} min-w-[200px]`}>
+            <audio 
+                ref={audioRef} 
+                src={url} 
+                onTimeUpdate={handleTimeUpdate} 
+                onLoadedMetadata={handleLoadedMetadata}
+                onEnded={handleEnded} 
+                preload="auto"
+                className="hidden" 
+            />
+            <button onClick={togglePlay} className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 shadow-md transition-all active:scale-90 ${isMe ? 'bg-white text-indigo-600' : 'bg-indigo-600 text-white'}`}>
+                {isPlaying ? <Pause size={16} fill="currentColor" /> : <Play size={16} className="ml-0.5" fill="currentColor" />}
+            </button>
+            <div className="flex-1 flex flex-col gap-1.5 pt-1">
+                <div className="h-1.5 w-full bg-black/10 dark:bg-white/10 rounded-full overflow-hidden">
+                    <div className={`h-full bg-white transition-all duration-[300ms] ease-linear ${isMe ? 'bg-white' : 'bg-indigo-600'}`} style={{ width: `${Math.min(progress, 100)}%` }}></div>
+                </div>
+                <div className="flex justify-between text-[10px] font-black opacity-80 tracking-tighter tabular-nums">
+                    <span>{formatTime(currentTime)}</span>
+                    <span>{formatTime(actualDuration)}</span>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const TypingIndicator: React.FC<{ trip: Trip }> = ({ trip }) => {
     const { user } = useAuth();
@@ -107,22 +226,26 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose, trip }) => {
     const [previewImage, setPreviewImage] = useState<string | null>(null);
     const lastTyped = useRef<number>(0);
     
+    // Voice Message states
+    const [isRecording, setIsRecording] = useState(false);
+    const [recordingTime, setRecordingTime] = useState(0);
+    const recordingTimeRef = useRef(0); // Using ref to avoid stale closure in onstop
+    const [activeStream, setActiveStream] = useState<MediaStream | null>(null);
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const recordingIntervalRef = useRef<number | null>(null);
+    const audioChunksRef = useRef<Blob[]>([]);
+
     const approvedPassengers = trip.passengers?.filter(p => p.status === 'approved') || [];
 
     const updateReadStatus = (latestMsgs?: ChatMessage[]) => {
         if (!user || !trip.id) return;
         const storageKey = `lastRead_${trip.id}_${user.uid}`;
-        
-        // הגדרה של זמן קריאה עתידי משמעותי (3 דקות קדימה) כדי להבטיח איפוס מוחלט של המונה
         let timestamp = Date.now() + 180000; 
-        
         if (latestMsgs && latestMsgs.length > 0) {
             const lastMsgTime = latestMsgs[latestMsgs.length - 1].createdAt?.toMillis();
             if (lastMsgTime) timestamp = Math.max(timestamp, lastMsgTime + 10000);
         }
-        
         localStorage.setItem(storageKey, timestamp.toString());
-        // שיגור אירוע גלובלי כדי לעדכן את המונה בכרטיסי הנסיעה באופן מיידי
         window.dispatchEvent(new CustomEvent('chatRead', { detail: { tripId: trip.id } }));
     };
 
@@ -149,11 +272,9 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose, trip }) => {
         
         const processSnapshot = (snapshot: any) => {
             let msgs = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as ChatMessage));
-            
             if (snapshot.query === qSimple) {
                 msgs.sort((a: any, b: any) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0));
             }
-
             setMessages(msgs);
             setLoading(false);
             updateReadStatus(msgs);
@@ -171,12 +292,10 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose, trip }) => {
         return () => {
             unsubscribe();
             if (user) db.clearTypingStatus(trip.id, user.uid);
+            if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
+            if (activeStream) activeStream.getTracks().forEach(t => t.stop());
         };
     }, [isOpen, trip.id, user?.uid]);
-
-    useEffect(() => {
-        if (isOpen && messages.length > 0) scrollToBottom();
-    }, [messages.length]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
@@ -207,51 +326,126 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose, trip }) => {
         } catch (error) { setNewMessage(txt); }
     };
 
+    // Voice Message Logic
+    const startRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            setActiveStream(stream);
+            
+            const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+            mediaRecorderRef.current = mediaRecorder;
+            audioChunksRef.current = [];
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) audioChunksRef.current.push(event.data);
+            };
+
+            mediaRecorder.onstop = async () => {
+                const finalChunks = [...audioChunksRef.current];
+                if (finalChunks.length === 0) {
+                    setIsRecording(false);
+                    return;
+                }
+                
+                const audioBlob = new Blob(finalChunks, { type: 'audio/webm' });
+                // CRITICAL FIX: Using recordingTimeRef instead of state to get the actual final duration
+                const finalDuration = recordingTimeRef.current;
+                
+                const reader = new FileReader();
+                reader.onloadend = async () => {
+                    const base64Audio = reader.result as string;
+                    if (user && base64Audio && finalDuration > 0) {
+                        try {
+                            await db.sendChatMessage({
+                                tripId: trip.id,
+                                senderId: user.uid,
+                                senderName: user.displayName || t('guest'),
+                                audioUrl: base64Audio,
+                                audioDuration: finalDuration,
+                                type: 'audio',
+                                createdAt: Timestamp.now()
+                            });
+                            updateReadStatus();
+                            scrollToBottom();
+                        } catch (err) {
+                            console.error("Error sending voice message:", err);
+                        }
+                    }
+                };
+                reader.readAsDataURL(audioBlob);
+                stream.getTracks().forEach(track => track.stop());
+                setActiveStream(null);
+            };
+
+            setIsRecording(true);
+            setRecordingTime(0);
+            recordingTimeRef.current = 0;
+            // Record with timeslice for better blob reliability
+            mediaRecorder.start(500); 
+
+            recordingIntervalRef.current = window.setInterval(() => {
+                setRecordingTime(prev => {
+                    const newVal = prev + 1;
+                    recordingTimeRef.current = newVal;
+                    return newVal;
+                });
+            }, 1000);
+
+        } catch (err) {
+            console.error("Microphone access denied:", err);
+            alert(language === 'he' ? "חובה לאשר גישה למיקרופון כדי להקליט הודעות קוליות." : "Microphone access is required to record voice messages.");
+        }
+    };
+
+    const stopRecording = () => {
+        if (mediaRecorderRef.current && isRecording) {
+            if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
+        }
+    };
+
+    const cancelRecording = () => {
+        if (mediaRecorderRef.current && isRecording) {
+            if (recordingIntervalRef.current) clearInterval(recordingIntervalRef.current);
+            audioChunksRef.current = []; 
+            mediaRecorderRef.current.onstop = null; // Prevent sending on cancel
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
+            setRecordingTime(0);
+            recordingTimeRef.current = 0;
+            if (activeStream) activeStream.getTracks().forEach(t => t.stop());
+            setActiveStream(null);
+        }
+    };
+
+    const formatSeconds = (seconds: number) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+
     const handleSendLocation = () => {
         if (!user || sendingLocation || sendingMedia) return;
-        
         if (!navigator.geolocation) {
             alert(language === 'he' ? 'הדפדפן שלך לא תומך בשיתוף מיקום' : 'Your browser does not support geolocation');
             return;
         }
-
         setSendingLocation(true);
-        
-        const geoOptions = {
-            enableHighAccuracy: true,
-            timeout: 8000, 
-            maximumAge: 0
-        };
-
+        const geoOptions = { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 };
         navigator.geolocation.getCurrentPosition(
             async (position) => {
                 try {
                     const { latitude, longitude } = position.coords;
-                    await db.sendChatMessage({ 
-                        tripId: trip.id, 
-                        senderId: user.uid, 
-                        senderName: user.displayName || t('guest'), 
-                        location: { lat: latitude, lng: longitude }, 
-                        type: 'location', 
-                        createdAt: Timestamp.now() 
-                    });
+                    await db.sendChatMessage({ tripId: trip.id, senderId: user.uid, senderName: user.displayName || t('guest'), location: { lat: latitude, lng: longitude }, type: 'location', createdAt: Timestamp.now() });
                     updateReadStatus();
                     scrollToBottom();
-                } catch (dbErr: any) {
-                    console.error("Firestore error:", dbErr.message);
-                } finally {
-                    setSendingLocation(false);
-                }
+                } finally { setSendingLocation(false); }
             },
             (err) => {
                 setSendingLocation(false);
-                if (err.code === 1) { // PERMISSION_DENIED
-                    setShowLocationBlockedModal(true);
-                } else if (err.code === 3) { // TIMEOUT
-                    alert(language === 'he' ? 'זמן ההמתנה למיקום הסתיים. נסה שוב במקום פתוח יותר.' : 'Location request timed out.');
-                } else {
-                    alert(language === 'he' ? 'לא ניתן לקבוע מיקום כרגע. וודא שה-GPS פועל.' : 'Unable to get location.');
-                }
+                if (err.code === 1) setShowLocationBlockedModal(true);
+                else alert(language === 'he' ? 'לא ניתן לקבוע מיקום כרגע.' : 'Unable to get location.');
             },
             geoOptions
         );
@@ -284,32 +478,12 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose, trip }) => {
                     <div className="bg-white dark:bg-slate-900 w-full max-sm rounded-[2.5rem] shadow-2xl overflow-hidden border border-white/10 animate-scale-in relative" onClick={e => e.stopPropagation()}>
                         <div className="p-8 flex flex-col items-center text-center">
                             <div className="relative mb-6">
-                                <div className="w-20 h-20 bg-amber-50 dark:bg-amber-900/20 rounded-full flex items-center justify-center text-amber-600 ring-8 ring-amber-50/50 dark:ring-amber-900/10">
-                                    <Lock size={40} className="animate-pulse" />
-                                </div>
-                                <div className="absolute -bottom-1 -right-1 bg-white dark:bg-slate-800 p-1.5 rounded-full shadow-md border border-slate-100 dark:border-slate-700">
-                                    <MapPin size={16} className="text-indigo-600" />
-                                </div>
+                                <div className="w-20 h-20 bg-amber-50 dark:bg-amber-900/20 rounded-full flex items-center justify-center text-amber-600 ring-8 ring-amber-50/50 dark:ring-amber-900/10"><Lock size={40} className="animate-pulse" /></div>
+                                <div className="absolute -bottom-1 -right-1 bg-white dark:bg-slate-800 p-1.5 rounded-full shadow-md border border-slate-100 dark:border-slate-700"><MapPin size={16} className="text-indigo-600" /></div>
                             </div>
-
-                            <h3 className="text-xl font-black text-slate-800 dark:text-white mb-4 leading-tight">
-                                {language === 'he' ? 'גישה למיקום חסומה' : 'Location Access Blocked'}
-                            </h3>
-                            
-                            <div className="w-full bg-slate-50 dark:bg-slate-800/50 p-6 rounded-3xl border border-slate-100 dark:border-slate-700/50 mb-8">
-                                <p className="text-sm font-bold text-slate-600 dark:text-slate-300 leading-relaxed text-start">
-                                    {language === 'he' 
-                                        ? 'הגישה למיקום חסומה. כדי לשתף מיקום, עליך ללחוץ על סמל המנעול (🔒) שליד כתובת האתר למעלה ולבחור "אפשר" (Allow) עבור מיקום.'
-                                        : 'Location access is blocked. Please click the lock icon (🔒) near the URL and choose "Allow" for Location.'}
-                                </p>
-                            </div>
-                            
-                            <button 
-                                onClick={() => setShowLocationBlockedModal(false)}
-                                className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl shadow-xl transition-all active:scale-95 shadow-indigo-500/20"
-                            >
-                                {t('confirm')}
-                            </button>
+                            <h3 className="text-xl font-black text-slate-800 dark:text-white mb-4 leading-tight">{language === 'he' ? 'גישה למיקום חסומה' : 'Location Access Blocked'}</h3>
+                            <div className="w-full bg-slate-50 dark:bg-slate-800/50 p-6 rounded-3xl border border-slate-100 dark:border-slate-700/50 mb-8"><p className="text-sm font-bold text-slate-600 dark:text-slate-300 leading-relaxed text-start">{language === 'he' ? 'הגישה למיקום חסומה. עליך ללחוץ על סמל המנעול (🔒) שליד כתובת האתר למעלה ולבחור "אפשר" עבור מיקום.' : 'Location access is blocked. Please click the lock icon (🔒) near the URL and choose "Allow" for Location.'}</p></div>
+                            <button onClick={() => setShowLocationBlockedModal(false)} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl shadow-xl transition-all active:scale-95 shadow-indigo-500/20">{t('confirm')}</button>
                         </div>
                     </div>
                 </div>
@@ -329,11 +503,7 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose, trip }) => {
                             <div className="p-2.5 bg-white/20 rounded-2xl backdrop-blur-md shadow-inner"><MessageCircle size={22} /></div>
                             <div>
                                 <h3 className="font-black text-lg leading-tight tracking-tight">{t('chat_title')}</h3>
-                                <p className="text-[10px] opacity-70 font-bold uppercase tracking-widest mt-0.5">
-                                    {t('chat_header_status')
-                                        .replace('{driver}', t('driver_label'))
-                                        .replace('{count}', approvedPassengers.length.toString())}
-                                </p>
+                                <p className="text-[10px] opacity-70 font-bold uppercase tracking-widest mt-0.5">{t('chat_header_status').replace('{driver}', t('driver_label')).replace('{count}', approvedPassengers.length.toString())}</p>
                             </div>
                         </div>
                         <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors active:scale-90"><X size={22} /></button>
@@ -346,67 +516,49 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose, trip }) => {
                                 <span className="text-[10px] font-black uppercase tracking-tight">מנסה לקבל מיקום...</span>
                             </div>
                         )}
-                        
                         {loading ? (<div className="flex flex-col items-center justify-center py-20 gap-3"><Loader2 size={32} className="animate-spin text-indigo-50" /><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">טוען הודעות...</span></div>) : messages.length === 0 ? (<div className="text-center py-20 flex flex-col items-center gap-4 animate-fade-in"><div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-300"><MessageCircle size={32} /></div><p className="text-slate-400 text-sm font-black uppercase tracking-widest leading-relaxed">{t('no_messages')}</p></div>) : (
                             messages.map((msg) => {
                                 const isMe = msg.senderId === user?.uid;
                                 const isDriver = msg.senderId === trip.driverId;
                                 const roleLabel = isDriver ? t('driver_label') : t('passenger_label');
-                                const isRichContent = msg.type === 'location' || msg.type === 'image';
+                                const isRichContent = msg.type === 'location' || msg.type === 'image' || msg.type === 'audio';
 
                                 return (
                                     <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-slide-up`}>
-                                        <div className={`max-w-[245px] ${isRichContent ? 'p-0 bg-transparent shadow-none' : 'px-4 py-3'} rounded-[1.8rem] shadow-sm text-sm ${isMe && !isRichContent ? 'bg-indigo-600 text-white rounded-br-none shadow-indigo-600/10' : !isRichContent ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-none border border-slate-100 dark:border-slate-700' : ''}`}>
+                                        <div className={`max-w-[260px] ${isRichContent ? 'p-0 bg-transparent shadow-none' : 'px-4 py-3'} rounded-[1.8rem] shadow-sm text-sm ${isMe && !isRichContent ? 'bg-indigo-600 text-white rounded-br-none shadow-indigo-600/10' : !isRichContent ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-none border border-slate-100 dark:border-slate-700' : ''}`}>
                                             {!isMe && !isRichContent && (
                                                 <div className="flex items-center gap-2 mb-1.5">
                                                     <span className="text-[10px] font-black uppercase text-indigo-600 dark:text-indigo-400 block truncate max-w-[120px]">{msg.senderName}</span>
                                                     <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded-lg ${isDriver ? 'bg-amber-100 text-amber-600' : 'bg-indigo-50 text-indigo-500'}`}>{roleLabel}</span>
                                                 </div>
                                             )}
-                                            {msg.type === 'text' && <p className="leading-relaxed font-bold">{msg.text}</p>}
+                                            {msg.type === 'text' && <p className="leading-relaxed font-bold whitespace-pre-wrap break-words">{msg.text}</p>}
                                             {msg.type === 'image' && (
                                                 <div className="relative group cursor-pointer rounded-[2rem] overflow-hidden border-2 border-white dark:border-slate-700 shadow-xl w-[170px] h-[170px] shrink-0" onClick={() => setPreviewImage(msg.imageUrl || null)}>
                                                     <img src={msg.imageUrl} alt="" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
                                                 </div>
                                             )}
+                                            {msg.type === 'audio' && msg.audioUrl && (
+                                                <div className={`rounded-[2rem] shadow-md p-1 ${isMe ? 'bg-indigo-600 rounded-br-none' : 'bg-white dark:bg-slate-800 rounded-bl-none border border-slate-100 dark:border-slate-700'}`}>
+                                                    <AudioPlayer url={msg.audioUrl} duration={msg.audioDuration} isMe={isMe} />
+                                                </div>
+                                            )}
                                             {msg.type === 'location' && msg.location && (
                                                 <div className="w-[170px] bg-white dark:bg-slate-800 rounded-[2rem] shadow-2xl border border-indigo-100 dark:border-indigo-900 overflow-hidden flex flex-col group transition-all duration-300">
                                                     <div className="h-16 w-full relative overflow-hidden flex items-center justify-center bg-indigo-50 dark:bg-indigo-950/40">
-                                                        <div className="absolute inset-0 opacity-20" 
-                                                             style={{ 
-                                                                 backgroundImage: 'linear-gradient(#e0e7ff 1px, transparent 1px), linear-gradient(90deg, #e0e7ff 1px, transparent 1px)',
-                                                                 backgroundSize: '15px 15px'
-                                                             }}>
-                                                        </div>
+                                                        <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'linear-gradient(#e0e7ff 1px, transparent 1px), linear-gradient(90deg, #e0e7ff 1px, transparent 1px)', backgroundSize: '15px 15px' }}></div>
                                                         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-indigo-500/10 to-transparent h-full w-full animate-[scan_3s_linear_infinite]"></div>
-                                                        
-                                                        <div className="relative bg-white dark:bg-slate-700 p-1.5 rounded-xl shadow-lg border border-indigo-100 dark:border-indigo-900 group-hover:scale-110 transition-transform duration-500 z-10">
-                                                            <MapPin size={18} className="text-indigo-600 animate-bounce" fill="currentColor" fillOpacity={0.1} />
-                                                        </div>
+                                                        <div className="relative bg-white dark:bg-slate-700 p-1.5 rounded-xl shadow-lg border border-indigo-100 dark:border-indigo-900 group-hover:scale-110 transition-transform duration-500 z-10"><MapPin size={18} className="text-indigo-600 animate-bounce" fill="currentColor" fillOpacity={0.1} /></div>
                                                     </div>
-
-                                                    <div className="p-2.5 text-center bg-white dark:bg-slate-800 border-t border-indigo-50 dark:border-slate-700">
-                                                        <h4 className="text-[11px] font-black text-slate-800 dark:text-white tracking-tight truncate leading-tight">
-                                                            {isMe ? 'המיקום שלי' : `המיקום של ${msg.senderName.split(' ')[0]}`}
-                                                        </h4>
-                                                    </div>
-                                                    
+                                                    <div className="p-2.5 text-center bg-white dark:bg-slate-800 border-t border-indigo-50 dark:border-slate-700"><h4 className="text-[11px] font-black text-slate-800 dark:text-white tracking-tight truncate leading-tight">{isMe ? 'המיקום שלי' : `המיקום של ${msg.senderName.split(' ')[0]}`}</h4></div>
                                                     <div className="px-2 pb-2.5 pt-0.5 bg-slate-50/50 dark:bg-slate-800/50 grid grid-cols-2 gap-2 h-10">
-                                                        <a href={`https://waze.com/ul?ll=${msg.location.lat},${msg.location.lng}&navigate=yes`} target="_blank" rel="noreferrer" className="h-full bg-[#33CCFF] hover:bg-[#2BB8E6] text-white rounded-xl flex flex-row items-center justify-center gap-1 px-1 transition-all active:scale-95 shadow-sm group/btn overflow-hidden">
-                                                            <div className="shrink-0 scale-75"><WazeLogo /></div>
-                                                            <span className="text-[8px] font-black tracking-widest uppercase whitespace-nowrap">WAZE</span>
-                                                        </a>
-                                                        <a href={`https://www.google.com/maps/search/?api=1&query=${msg.location.lat},${msg.location.lng}`} target="_blank" rel="noreferrer" className="h-full bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 text-slate-800 dark:text-slate-200 rounded-xl flex flex-row items-center justify-center gap-1 px-1 transition-all active:scale-95 shadow-sm group/btn overflow-hidden">
-                                                            <div className="shrink-0 scale-75"><GoogleMapsLogo /></div>
-                                                            <span className="text-[8px] font-black tracking-tight uppercase whitespace-nowrap">GOOGLE</span>
-                                                        </a>
+                                                        <a href={`https://waze.com/ul?ll=${msg.location.lat},${msg.location.lng}&navigate=yes`} target="_blank" rel="noreferrer" className="h-full bg-[#33CCFF] hover:bg-[#2BB8E6] text-white rounded-xl flex flex-row items-center justify-center gap-1 px-1 transition-all active:scale-95 shadow-sm group/btn overflow-hidden"><div className="shrink-0 scale-75"><WazeLogo /></div><span className="text-[8px] font-black tracking-widest uppercase whitespace-nowrap">WAZE</span></a>
+                                                        <a href={`https://www.google.com/maps/search/?api=1&query=${msg.location.lat},${msg.location.lng}`} target="_blank" rel="noreferrer" className="h-full bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 text-slate-800 dark:text-slate-200 rounded-xl flex flex-row items-center justify-center gap-1 px-1 transition-all active:scale-95 shadow-sm group/btn overflow-hidden"><div className="shrink-0 scale-75"><GoogleMapsLogo /></div><span className="text-[8px] font-black tracking-tight uppercase whitespace-nowrap">GOOGLE</span></a>
                                                     </div>
                                                 </div>
                                             )}
                                             {!isRichContent && (
-                                                <span className={`text-[8px] block mt-1.5 ${isMe ? 'text-white/60 text-start' : 'text-slate-400 text-end'} font-black uppercase tracking-widest px-1`}>
-                                                    {msg.createdAt ? msg.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute:'2-digit' }) : ''}
-                                                </span>
+                                                <span className={`text-[8px] block mt-1.5 ${isMe ? 'text-white/60 text-start' : 'text-slate-400 text-end'} font-black uppercase tracking-widest px-1`}>{msg.createdAt ? msg.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute:'2-digit' }) : ''}</span>
                                             )}
                                         </div>
                                     </div>
@@ -418,27 +570,45 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose, trip }) => {
 
                     <div className="bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 p-4 pb-safe shrink-0 z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.02)]">
                         <TypingIndicator trip={trip} />
-                        <div className="flex items-center gap-3 mb-3 px-1">
-                            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileSelect} />
-                            <input type="file" ref={cameraInputRef} className="hidden" accept="image/*" capture="environment" onChange={handleFileSelect} />
-                            <button onClick={() => cameraInputRef.current?.click()} disabled={sendingMedia || sendingLocation} className="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl text-slate-500 hover:text-indigo-600 transition-all active:scale-90" title={t('take_photo')}><Camera size={22} /></button>
-                            <button onClick={() => fileInputRef.current?.click()} disabled={sendingMedia || sendingLocation} className="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl text-slate-500 hover:text-indigo-600 transition-all active:scale-90"><ImageIcon size={22} /></button>
-                            <button onClick={handleSendLocation} disabled={sendingLocation || sendingMedia} className={`p-2.5 rounded-xl transition-all active:scale-90 ${sendingLocation ? 'bg-indigo-600 text-white' : 'bg-slate-50 dark:bg-slate-800 text-slate-500 hover:text-indigo-600'}`}>
-                                {sendingLocation ? <Loader2 size={22} className="animate-spin" /> : <MapPin size={22} />}
-                            </button>
-                        </div>
-                        <form onSubmit={handleSend} className="flex gap-3"> 
-                            <input type="text" value={newMessage} onChange={handleInputChange} placeholder={t('chat_placeholder')} className="flex-1 bg-slate-100 dark:bg-slate-800 border-none rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm font-bold text-slate-800 dark:text-white placeholder-slate-400 shadow-inner" />
-                            <button type="submit" disabled={!newMessage.trim() || sendingMedia || sendingLocation} className="w-14 h-14 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-600/30 active:scale-90 transition-all"><Send size={24} className={dir === 'rtl' ? 'rotate-180' : ''} /></button>
-                        </form>
+                        
+                        {isRecording ? (
+                            <div className="flex items-center gap-2 bg-rose-50 dark:bg-rose-900/20 p-2.5 rounded-[2rem] animate-fade-in border border-rose-100 dark:border-rose-800/50 shadow-inner overflow-hidden">
+                                <div className="w-10 h-10 bg-rose-500 rounded-full flex items-center justify-center text-white animate-pulse shadow-lg shrink-0"><Mic size={18} /></div>
+                                <div className="flex-1 flex flex-row items-center gap-2 min-w-0">
+                                    <div className="flex flex-col shrink-0 min-w-[50px]">
+                                        <span className="text-[8px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest leading-none mb-1">מקליט...</span>
+                                        <span className="text-sm font-black text-rose-700 dark:text-rose-300 tabular-nums leading-none">{formatSeconds(recordingTime)}</span>
+                                    </div>
+                                    <div className="flex-1 overflow-hidden flex items-center">{activeStream && <AudioVisualizer stream={activeStream} />}</div>
+                                </div>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                    <button onClick={cancelRecording} className="p-2.5 bg-white dark:bg-slate-800 text-slate-400 hover:text-rose-600 rounded-xl shadow-sm transition-all active:scale-90"><Trash2 size={18} /></button>
+                                    <button onClick={stopRecording} className="p-2.5 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-600/20 active:scale-90 transition-all flex items-center gap-1.5 font-bold px-4"><Send size={15} /> <span className="text-xs">שלח</span></button>
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="flex items-center gap-3 mb-3 px-1">
+                                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileSelect} />
+                                    <input type="file" ref={cameraInputRef} className="hidden" accept="image/*" capture="environment" onChange={handleFileSelect} />
+                                    <button onClick={() => cameraInputRef.current?.click()} disabled={sendingMedia || sendingLocation} className="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl text-slate-500 hover:text-indigo-600 transition-all active:scale-90" title={t('take_photo')}><Camera size={22} /></button>
+                                    <button onClick={() => fileInputRef.current?.click()} disabled={sendingMedia || sendingLocation} className="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl text-slate-500 hover:text-indigo-600 transition-all active:scale-90"><ImageIcon size={22} /></button>
+                                    <button onClick={handleSendLocation} disabled={sendingLocation || sendingMedia} className={`p-2.5 rounded-xl transition-all active:scale-90 ${sendingLocation ? 'bg-indigo-600 text-white' : 'bg-slate-50 dark:bg-slate-800 text-slate-500 hover:text-indigo-600'}`}>
+                                        {sendingLocation ? <Loader2 size={22} className="animate-spin" /> : <MapPin size={22} />}
+                                    </button>
+                                    <button onClick={startRecording} disabled={sendingMedia || sendingLocation} className="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl text-slate-500 hover:text-rose-500 transition-all active:scale-90 ml-auto"><Mic size={22} /></button>
+                                </div>
+                                <form onSubmit={handleSend} className="flex gap-3"> 
+                                    <input type="text" value={newMessage} onChange={handleInputChange} placeholder={t('chat_placeholder')} className="flex-1 bg-slate-100 dark:bg-slate-800 border-none rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm font-bold text-slate-800 dark:text-white placeholder-slate-400 shadow-inner" />
+                                    <button type="submit" disabled={!newMessage.trim() || sendingMedia || sendingLocation} className="w-14 h-14 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-600/30 active:scale-90 transition-all"><Send size={24} className={dir === 'rtl' ? 'rotate-180' : ''} /></button>
+                                </form>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>
             <style>{`
-                @keyframes scan {
-                    from { transform: translateY(-100%); }
-                    to { transform: translateY(100%); }
-                }
+                @keyframes scan { from { transform: translateY(-100%); } to { transform: translateY(100%); } }
             `}</style>
         </Portal>
     );
