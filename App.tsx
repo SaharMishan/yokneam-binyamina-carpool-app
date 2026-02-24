@@ -84,6 +84,49 @@ const AppContent = () => {
     const [isCheckingDeepLink, setIsCheckingDeepLink] = useState(false);
     const [canInstall, setCanInstall] = useState(false);
 
+    // Dynamic Meta Tags for Social Sharing (WhatsApp, etc.)
+    useEffect(() => {
+        const iconUrl = "https://cdn-icons-png.flaticon.com/512/3202/3202926.png";
+        
+        // Update favicon & apple-touch-icon
+        const head = document.getElementsByTagName('head')[0];
+        
+        const updateLink = (rel: string, href: string) => {
+            let link = document.querySelector(`link[rel*='${rel}']`) as HTMLLinkElement;
+            if (!link) {
+                link = document.createElement('link');
+                link.rel = rel;
+                head.appendChild(link);
+            }
+            link.href = href;
+        };
+
+        updateLink('icon', iconUrl);
+        updateLink('apple-touch-icon', iconUrl);
+
+        // Update Meta Tags for Social Sharing
+        const metaTags = [
+            { property: 'og:image', content: iconUrl },
+            { property: 'og:image:width', content: '512' },
+            { property: 'og:image:height', content: '512' },
+            { property: 'og:type', content: 'website' },
+            { name: 'twitter:image', content: iconUrl },
+            { name: 'twitter:card', content: 'summary_large_image' }
+        ];
+
+        metaTags.forEach(tag => {
+            const selector = tag.property ? `meta[property='${tag.property}']` : `meta[name='${tag.name}']`;
+            let element = document.querySelector(selector);
+            if (!element) {
+                element = document.createElement('meta');
+                if (tag.property) element.setAttribute('property', tag.property);
+                if (tag.name) element.setAttribute('name', tag.name);
+                head.appendChild(element);
+            }
+            element.setAttribute('content', tag.content);
+        });
+    }, []);
+
     useEffect(() => {
         const checkInstall = () => setCanInstall(!!(window as any).deferredInstallPrompt);
         window.addEventListener('pwa-install-available', checkInstall);
