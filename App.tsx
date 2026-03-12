@@ -39,8 +39,8 @@ const CoolLoader = ({ message }: { message: string }) => (
             
             {/* The Car */}
             <div className="relative z-10 animate-car-bounce">
-                <div className="bg-gradient-to-tr from-indigo-600 to-blue-500 p-5 rounded-[1.8rem] shadow-2xl shadow-indigo-500/40 border-4 border-white dark:border-slate-800 text-white">
-                    <CarFront size={64} strokeWidth={1.5} />
+                <div className="bg-white dark:bg-slate-800 p-1 rounded-[1.8rem] shadow-2xl shadow-indigo-500/40 border-4 border-white dark:border-slate-800 overflow-hidden w-24 h-24 flex items-center justify-center">
+                    <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 </div>
             </div>
 
@@ -87,7 +87,7 @@ const AppContent = () => {
 
     // Dynamic Meta Tags for Social Sharing (WhatsApp, etc.)
     useEffect(() => {
-        const iconUrl = "https://cdn-icons-png.flaticon.com/512/1048/1048313.png";
+        const iconUrl = "/logo.jpg";
         
         // Update favicon & apple-touch-icon
         const head = document.getElementsByTagName('head')[0];

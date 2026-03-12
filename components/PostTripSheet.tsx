@@ -130,30 +130,33 @@ const PostTripSheet: React.FC<PostTripSheetProps> = ({ isOpen, onClose, tripToEd
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="fixed inset-0 z-[70] flex items-end md:items-center justify-center p-0 md:p-4 bg-slate-900/50"
+                    transition={{ duration: 0.3, ease: "easeOut" }}
+                    className="fixed inset-0 z-[100] flex items-end md:items-center justify-center bg-slate-900/40"
                     onClick={onClose}
                 >
                     <TimePickerModal isOpen={isTimePickerOpen} onClose={() => setIsTimePickerOpen(false)} onSelect={setDepartureTime} initialTime={departureTime} />
                     <DatePickerModal isOpen={isDatePickerOpen} onClose={() => setIsDatePickerOpen(false)} onSelect={(d) => setStartDate(getLocalDateStr(d))} initialDate={new Date(startDate)} />
 
                     <motion.div 
-                        initial={{ y: "100%" }}
-                        animate={{ y: 0 }}
-                        exit={{ y: "100%" }}
+                        initial={{ y: "100%", opacity: 0.5 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: "100%", opacity: 0.5 }}
                         transition={{ 
-                            type: "spring",
-                            damping: 30,
-                            stiffness: 300,
-                            mass: 0.8
+                            duration: 0.4,
+                            ease: [0.32, 0.72, 0, 1]
                         }}
                         style={{ willChange: "transform" }}
-                        className="w-full md:max-w-md bg-white dark:bg-slate-900 rounded-t-[2.5rem] md:rounded-[2.5rem] shadow-2xl h-[90dvh] md:h-auto md:max-h-[90dvh] flex flex-col overflow-hidden pb-safe relative z-10" 
+                        className="w-full md:max-w-lg bg-white dark:bg-slate-900 rounded-t-[2rem] md:rounded-[2rem] shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.3)] h-[92dvh] md:h-auto md:max-h-[90dvh] flex flex-col overflow-hidden pb-safe relative z-10 transform-gpu" 
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div className="px-6 py-5 flex justify-between items-center border-b border-slate-100 dark:border-slate-800 shrink-0">
-                            <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">{tripToEdit?.id ? t('edit') : (tripType === 'offer' ? t('post_a_trip') : t('publish_request'))}</h2>
-                            <button onClick={onClose} className="p-2 bg-slate-50 dark:bg-slate-800 rounded-full text-slate-500 transition-transform active:scale-90"><X size={20} /></button>
+                        {/* Drag Handle Indicator */}
+                        <div className="w-full flex justify-center pt-3 pb-1 shrink-0">
+                            <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
+                        </div>
+
+                        <div className="px-6 py-4 flex justify-between items-center border-b border-slate-50 dark:border-slate-800/50 shrink-0">
+                            <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">{tripToEdit?.id ? t('edit') : (tripType === 'offer' ? t('post_a_trip') : t('publish_request'))}</h2>
+                            <button onClick={onClose} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"><X size={20} /></button>
                         </div>
                         
                         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-6 space-y-6 scrollbar-hide">

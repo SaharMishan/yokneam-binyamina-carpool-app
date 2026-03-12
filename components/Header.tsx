@@ -106,7 +106,9 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onLogoClick, onNavigateToT
                     className={`flex items-center gap-3 cursor-pointer group md:order-1 ${dir === 'rtl' ? 'order-2 md:order-1' : 'order-1'}`} 
                     onClick={onLogoClick}
                 >
-                    <div className="bg-gradient-to-tr from-blue-600 to-indigo-600 text-white p-2 rounded-xl shadow-md group-hover:rotate-6 transition-transform"><CarFront size={20} /></div>
+                    <div className="bg-white dark:bg-slate-800 p-0.5 rounded-xl shadow-md group-hover:rotate-6 transition-transform overflow-hidden w-10 h-10 flex items-center justify-center border border-slate-200 dark:border-slate-700">
+                        <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    </div>
                     <h1 className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-800 to-slate-600 dark:from-white dark:to-slate-300 hidden sm:block">{t('app_title')}</h1>
                 </div>
 

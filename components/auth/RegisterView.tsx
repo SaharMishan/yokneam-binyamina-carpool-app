@@ -71,8 +71,8 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin }) => {
     return (
         <div className="animate-fade-in w-full max-w-sm mx-auto">
             <div className="mb-6 text-center">
-                <div className="w-14 h-14 bg-indigo-50 dark:bg-indigo-900/20 rounded-full flex items-center justify-center mx-auto mb-4 text-indigo-600 dark:text-indigo-400 ring-4 ring-indigo-50 dark:ring-indigo-900/10">
-                    <User size={28} />
+                <div className="w-16 h-16 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/30 group hover:scale-105 transition-transform overflow-hidden border border-slate-100 dark:border-slate-700">
+                    <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 </div>
                 <h1 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">{t('create_account')}</h1>
                 <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">{t('register_subtitle')}</p>

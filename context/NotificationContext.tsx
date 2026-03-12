@@ -64,8 +64,8 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                             const title = notif.title; // Translating on display
                             const options = {
                                 body: notif.message.includes('|') ? notif.message.split('|')[1] : notif.message,
-                                icon: 'https://cdn-icons-png.flaticon.com/512/1048/1048313.png',
-                                badge: 'https://cdn-icons-png.flaticon.com/512/1048/1048313.png',
+                                icon: '/logo.jpg',
+                                badge: '/logo.jpg',
                                 data: { url: notif.relatedTripId ? `/?tripId=${notif.relatedTripId}` : '/' }
                             };
 
@@ -163,6 +163,20 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
 export const useNotifications = () => {
     const context = useContext(NotificationContext);
-    if (context === undefined) throw new Error('useNotifications error');
+    if (context === undefined) {
+        console.warn('useNotifications was used outside of NotificationProvider. Returning empty context.');
+        return {
+            notifications: [],
+            unreadCount: 0,
+            markAsRead: async () => {},
+            markAllAsRead: async () => {},
+            deleteNotification: async () => {},
+            clearAllNotifications: async () => {},
+            activeSystemMessage: null,
+            setActiveSystemMessage: () => {},
+            confirmSystemMessage: async () => {},
+            createLocalNotification: () => {}
+        } as any;
+    }
     return context;
 };

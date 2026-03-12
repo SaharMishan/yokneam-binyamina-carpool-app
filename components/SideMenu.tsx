@@ -179,8 +179,8 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, currentView, setVi
                                     onClick={() => handleNavigation('home')} 
                                     className="flex items-center gap-2.5 cursor-pointer active:opacity-80 transition-opacity min-w-0 flex-1 touch-manipulation"
                                 >
-                                    <div className="bg-gradient-to-tr from-blue-600 to-indigo-600 text-white p-2 rounded-xl shadow-lg shrink-0">
-                                        <CarFront size={18} className="text-white" />
+                                    <div className="bg-white dark:bg-slate-800 p-0.5 rounded-xl shadow-lg shrink-0 w-9 h-9 flex items-center justify-center border border-slate-100 dark:border-slate-700 overflow-hidden">
+                                        <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                                     </div>
                                     <h2 className="text-[15px] font-black text-slate-800 dark:text-white leading-tight tracking-tight whitespace-nowrap">
                                         {t('app_title')}

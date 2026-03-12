@@ -4,21 +4,21 @@
   "name": "קארפול יקנעם בנימינה",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/1048/1048313.png",
+      "src": "/logo.jpg",
       "sizes": "192x192",
-      "type": "image/png",
+      "type": "image/jpeg",
       "purpose": "any"
     },
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/1048/1048313.png",
+      "src": "/logo.jpg",
       "sizes": "192x192",
-      "type": "image/png",
+      "type": "image/jpeg",
       "purpose": "maskable"
     },
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/1048/1048313.png",
+      "src": "/logo.jpg",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/jpeg"
     }
   ],
   "start_url": "/",
@@ -34,7 +34,7 @@
     {
       "name": "נסיעות חדשות",
       "url": "/",
-      "icons": [{ "src": "https://cdn-icons-png.flaticon.com/512/1048/1048313.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/logo.jpg", "sizes": "192x192", "type": "image/jpeg" }]
     }
   ]
 }

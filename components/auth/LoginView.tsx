@@ -74,8 +74,8 @@ const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onSwitchToFor
     return (
         <div className="animate-fade-in w-full max-w-sm mx-auto flex flex-col min-h-[450px]">
             <div className="flex flex-col items-center mb-8">
-                <div className="w-16 h-16 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/30 mb-6 group hover:scale-105 transition-transform">
-                    <CarFront size={32} className="text-white" />
+                <div className="w-16 h-16 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/30 mb-6 group hover:scale-105 transition-transform overflow-hidden border border-slate-100 dark:border-slate-700">
+                    <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 </div>
                 
                 <h1 className="text-3xl font-bold text-slate-900 dark:text-white text-center tracking-tight mb-2">
