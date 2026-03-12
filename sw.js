@@ -5,7 +5,7 @@ const STATIC_ASSETS = [
   '/index.html',
   '/manifest.json',
   'https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;800;900&display=swap',
-  'https://cdn-icons-png.flaticon.com/512/3202/3202926.png'
+  'https://cdn-icons-png.flaticon.com/512/1048/1048313.png'
 ];
 
 self.addEventListener('install', (event) => {

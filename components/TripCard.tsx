@@ -181,10 +181,10 @@ const TripCard: React.FC<TripCardProps> = ({ trip, onEdit, onPostTripClick }) =>
     return (
         <motion.div 
             layout
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            initial={{ opacity: 0, scale: 0.98, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
+            exit={{ opacity: 0, scale: 0.98, y: 10 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
             className={`group relative bg-white dark:bg-slate-900 rounded-[2.2rem] shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden transition-all hover:shadow-xl hover:-translate-y-1 w-full max-w-[340px] mx-auto mb-4 flex ${themeClasses.glow}`}
         >
             <ChatModal isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} trip={trip} />

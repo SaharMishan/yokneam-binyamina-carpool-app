@@ -64,8 +64,8 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                             const title = notif.title; // Translating on display
                             const options = {
                                 body: notif.message.includes('|') ? notif.message.split('|')[1] : notif.message,
-                                icon: 'https://cdn-icons-png.flaticon.com/512/3202/3202926.png',
-                                badge: 'https://cdn-icons-png.flaticon.com/512/3202/3202926.png',
+                                icon: 'https://cdn-icons-png.flaticon.com/512/1048/1048313.png',
+                                badge: 'https://cdn-icons-png.flaticon.com/512/1048/1048313.png',
                                 data: { url: notif.relatedTripId ? `/?tripId=${notif.relatedTripId}` : '/' }
                             };
 

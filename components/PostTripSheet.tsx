@@ -41,16 +41,35 @@ const PostTripSheet: React.FC<PostTripSheetProps> = ({ isOpen, onClose, tripToEd
         'loc_train_binyamina', 'loc_binyamina_carpool', 'loc_binyamina_ind'
     ];
 
-    const [tripType, setTripType] = useState<TripType>('offer');
-    const [direction, setDirection] = useState<Direction>(Direction.YOKNEAM_TO_BINYAMINA);
-    const [startDate, setStartDate] = useState(getLocalDateStr(new Date()));
-    const [departureTime, setDepartureTime] = useState(getCurrentTimeStr());
-    const [availableSeats, setAvailableSeats] = useState(3);
-    const [pickupLocation, setPickupLocation] = useState('');
+    const [tripType, setTripType] = useState<TripType>(() => tripToEdit?.type || 'offer');
+    const [direction, setDirection] = useState<Direction>(() => tripToEdit?.direction || Direction.YOKNEAM_TO_BINYAMINA);
+    const [startDate, setStartDate] = useState(() => {
+        if (tripToEdit?.departureTime) return getLocalDateStr(tripToEdit.departureTime.toDate());
+        return getLocalDateStr(new Date());
+    });
+    const [departureTime, setDepartureTime] = useState(() => {
+        if (tripToEdit?.departureTime) {
+            const date = tripToEdit.departureTime.toDate();
+            return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+        }
+        return getCurrentTimeStr();
+    });
+    const [availableSeats, setAvailableSeats] = useState(() => {
+        if (tripToEdit) {
+            const approved = tripToEdit.passengers?.filter(p => p.status === 'approved').length || 0;
+            return tripToEdit.type === 'offer' ? tripToEdit.availableSeats + approved : tripToEdit.availableSeats;
+        }
+        return 3;
+    });
+    const [pickupLocation, setPickupLocation] = useState(() => tripToEdit?.pickupLocation || yokneamLocations[0]);
+    const [isCustomMode, setIsCustomMode] = useState(() => {
+        if (!tripToEdit?.pickupLocation) return false;
+        const allLocs = [...yokneamLocations, ...binyaminaLocations];
+        return !allLocs.includes(tripToEdit.pickupLocation);
+    });
+
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isCustomMode, setIsCustomMode] = useState(false);
     const [showErrors, setShowErrors] = useState(false);
-    const [seatError, setSeatError] = useState<string | null>(null);
     
     const [isTimePickerOpen, setIsTimePickerOpen] = useState(false);
     const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
@@ -64,59 +83,15 @@ const PostTripSheet: React.FC<PostTripSheetProps> = ({ isOpen, onClose, tripToEd
         return tripToEdit.passengers.filter(p => p.status === 'approved').length;
     };
 
+    // Only handle direction changes when switching directions manually
     useEffect(() => {
-        if (isOpen) {
-            setShowErrors(false);
-            setSeatError(null);
-            
-            if (tripToEdit) {
-                const initialType = tripToEdit.type || 'offer';
-                setTripType(initialType);
-                
-                if (tripToEdit.id) {
-                    setDirection(tripToEdit.direction);
-                    setPickupLocation(tripToEdit.pickupLocation || '');
-                    
-                    if (initialType === 'offer') {
-                        setAvailableSeats(tripToEdit.availableSeats + getApprovedCount());
-                    } else {
-                        setAvailableSeats(tripToEdit.availableSeats);
-                    }
-                    
-                    const allLocs = [...yokneamLocations, ...binyaminaLocations];
-                    setIsCustomMode(!allLocs.includes(tripToEdit.pickupLocation || '') && tripToEdit.pickupLocation !== '');
-                    
-                    const date = tripToEdit.departureTime.toDate();
-                    setStartDate(getLocalDateStr(date));
-                    setDepartureTime(`${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`);
-                } else {
-                    setDirection(Direction.YOKNEAM_TO_BINYAMINA);
-                    setAvailableSeats(3);
-                    setPickupLocation(yokneamLocations[0]);
-                    setIsCustomMode(false);
-                    setDepartureTime(getCurrentTimeStr());
-                    setStartDate(getLocalDateStr(new Date()));
-                }
-            } else {
-                setTripType('offer');
-                setDirection(Direction.YOKNEAM_TO_BINYAMINA);
-                setAvailableSeats(3);
-                setPickupLocation(yokneamLocations[0]);
-                setIsCustomMode(false);
-                setDepartureTime(getCurrentTimeStr());
-                setStartDate(getLocalDateStr(new Date()));
-            }
-        }
-    }, [isOpen, tripToEdit]);
-
-    useEffect(() => {
-        if (isOpen && (!tripToEdit || !tripToEdit.id) && !isCustomMode) {
+        if (isOpen && !isCustomMode) {
             const locList = direction === Direction.YOKNEAM_TO_BINYAMINA ? yokneamLocations : binyaminaLocations;
             if (!locList.includes(pickupLocation)) {
                 setPickupLocation(locList[0]);
             }
         }
-    }, [direction, isOpen]);
+    }, [direction]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -151,14 +126,14 @@ const PostTripSheet: React.FC<PostTripSheetProps> = ({ isOpen, onClose, tripToEd
     return (
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-[70] flex items-end md:items-center justify-center p-0 md:p-4" onClick={onClose}>
-                    <motion.div 
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm"
-                    ></motion.div>
-
+                <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="fixed inset-0 z-[70] flex items-end md:items-center justify-center p-0 md:p-4 bg-slate-900/50"
+                    onClick={onClose}
+                >
                     <TimePickerModal isOpen={isTimePickerOpen} onClose={() => setIsTimePickerOpen(false)} onSelect={setDepartureTime} initialTime={departureTime} />
                     <DatePickerModal isOpen={isDatePickerOpen} onClose={() => setIsDatePickerOpen(false)} onSelect={(d) => setStartDate(getLocalDateStr(d))} initialDate={new Date(startDate)} />
 
@@ -166,7 +141,13 @@ const PostTripSheet: React.FC<PostTripSheetProps> = ({ isOpen, onClose, tripToEd
                         initial={{ y: "100%" }}
                         animate={{ y: 0 }}
                         exit={{ y: "100%" }}
-                        transition={{ type: "spring", damping: 30, stiffness: 300 }}
+                        transition={{ 
+                            type: "spring",
+                            damping: 30,
+                            stiffness: 300,
+                            mass: 0.8
+                        }}
+                        style={{ willChange: "transform" }}
                         className="w-full md:max-w-md bg-white dark:bg-slate-900 rounded-t-[2.5rem] md:rounded-[2.5rem] shadow-2xl h-[90dvh] md:h-auto md:max-h-[90dvh] flex flex-col overflow-hidden pb-safe relative z-10" 
                         onClick={(e) => e.stopPropagation()}
                     >
@@ -235,7 +216,7 @@ const PostTripSheet: React.FC<PostTripSheetProps> = ({ isOpen, onClose, tripToEd
                             </button>
                         </div>
                     </motion.div>
-                </div>
+                </motion.div>
             )}
         </AnimatePresence>
     );

@@ -87,7 +87,7 @@ const AppContent = () => {
 
     // Dynamic Meta Tags for Social Sharing (WhatsApp, etc.)
     useEffect(() => {
-        const iconUrl = "https://cdn-icons-png.flaticon.com/512/3202/3202926.png";
+        const iconUrl = "https://cdn-icons-png.flaticon.com/512/1048/1048313.png";
         
         // Update favicon & apple-touch-icon
         const head = document.getElementsByTagName('head')[0];
@@ -243,13 +243,23 @@ const AppContent = () => {
                     </div>
                 </main>
                 
-                {currentView === 'home' && <PostTripButton onClick={() => openSheet()} />}
-                <PostTripSheet isOpen={isSheetOpen} onClose={() => setSheetOpen(false)} tripToEdit={tripToEdit} />
-                
-                {/* Mobile Tab Bar spacer if needed */}
+                <AnimatePresence>
+                    {currentView === 'home' && (
+                        <motion.div
+                            initial={{ scale: 0.8, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.8, opacity: 0 }}
+                            transition={{ duration: 0.15, ease: "easeOut" }}
+                            className="fixed bottom-6 end-6 z-40"
+                        >
+                            <PostTripButton onClick={() => openSheet()} />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
                 <div className="h-safe md:hidden bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800"></div>
             </div>
             
+            <PostTripSheet isOpen={isSheetOpen} onClose={() => setSheetOpen(false)} tripToEdit={tripToEdit} />
             <GlobalNotifier />
         </div>
     );

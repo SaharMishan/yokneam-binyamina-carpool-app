@@ -85,7 +85,7 @@ const DatePickerModal: React.FC<DatePickerModalProps> = ({ isOpen, onClose, onSe
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-[120] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
+        <div className="fixed inset-0 z-[120] bg-slate-900/60 flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
             <div className="bg-white dark:bg-slate-900 w-full max-w-[340px] rounded-[2rem] shadow-2xl overflow-hidden flex flex-col animate-scale-in border border-slate-100 dark:border-slate-800" onClick={(e) => e.stopPropagation()}>
                  <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-slate-900 z-40 relative">
                      <h3 className="font-black text-lg text-slate-800 dark:text-white flex items-center gap-2"><Calendar size={20} className="text-indigo-600"/>{t('select_date')}</h3>
