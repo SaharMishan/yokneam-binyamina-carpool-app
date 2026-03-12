@@ -16,7 +16,7 @@ const GlobalNotifier: React.FC = () => {
     useEffect(() => {
         if (!user || notifications.length === 0) return;
 
-        const newest = notifications.find(n => !n.isRead && n.type !== 'info' && !shownToastIds.current.has(n.id));
+        const newest = notifications.find(n => !n.isRead && !shownToastIds.current.has(n.id));
         
         if (newest) {
             const now = Date.now();
@@ -94,9 +94,11 @@ const GlobalNotifier: React.FC = () => {
     const getBgColor = () => {
         switch (activeToast.type) {
             case 'cancel': return 'bg-red-600';
-            case 'approved': return 'bg-emerald-600';
+            case 'approved': 
+            case 'invite_accepted': return 'bg-emerald-600';
             case 'invite': return 'bg-indigo-600';
             case 'request': return 'bg-amber-600';
+            case 'info': return 'bg-blue-600';
             default: return 'bg-slate-800';
         }
     };

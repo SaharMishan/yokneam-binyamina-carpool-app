@@ -13,10 +13,10 @@ interface ProfileViewProps {
 }
 
 const HistoryItem: React.FC<{ trip: Trip }> = ({ trip }) => {
-    const { t, language, dir } = useLocalization();
+    const { t, dir } = useLocalization();
     
     const date = trip.departureTime.toDate();
-    const dateStr = date.toLocaleDateString(language === 'he' ? 'he-IL' : 'en-US', { day: 'numeric', month: 'short' });
+    const dateStr = date.toLocaleDateString('he-IL', { day: 'numeric', month: 'short' });
     const timeStr = date.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
     const isYokneamToBinyamina = trip.direction === Direction.YOKNEAM_TO_BINYAMINA;
     const fromCity = isYokneamToBinyamina ? t('city_yokneam') : t('city_binyamina');
@@ -92,10 +92,9 @@ const HistoryItem: React.FC<{ trip: Trip }> = ({ trip }) => {
 
 const ProfileView: React.FC<ProfileViewProps> = ({ onEditTrip }) => {
     const { user, updateProfile } = useAuth();
-    const { t, language } = useLocalization();
+    const { t } = useLocalization();
     const [isEditing, setIsEditing] = useState(false);
     const [name, setName] = useState(user?.displayName || '');
-    const [nameEn, setNameEn] = useState(user?.displayNameEn || '');
     const [phone, setPhone] = useState(user?.phoneNumber || '');
     const [photoURL, setPhotoURL] = useState(user?.photoURL || '');
     const [loading, setLoading] = useState(false);
@@ -144,7 +143,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onEditTrip }) => {
         try {
             await updateProfile({ 
                 displayName: name, 
-                displayNameEn: nameEn || null, 
                 phoneNumber: phone, 
                 photoURL: photoURL 
             });
@@ -205,29 +203,15 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onEditTrip }) => {
                             <div className="space-y-1">
                                 <label className="text-xs font-bold text-slate-500 uppercase ml-1">{t('full_name')}</label>
                                 <div className="relative">
-                                    <User className={`absolute top-3.5 ${language === 'he' ? 'right-3' : 'left-3'} text-slate-400`} size={18} />
-                                    <input type="text" value={name} onChange={(e) => setName(e.target.value)} className={`w-full ${language === 'he' ? 'pr-10 pl-3' : 'pl-10 pr-3'} p-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium`} />
-                                </div>
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-slate-500 uppercase ml-1">{t('full_name_en')}</label>
-                                <div className="relative">
-                                    <Globe className={`absolute top-3.5 ${language === 'he' ? 'right-3' : 'left-3'} text-slate-400`} size={18} />
-                                    <input 
-                                        type="text" 
-                                        value={nameEn} 
-                                        onChange={(e) => setNameEn(e.target.value)} 
-                                        placeholder="Israel Israeli" 
-                                        className={`w-full ${language === 'he' ? 'pr-10 pl-3' : 'pl-10 pr-3'} p-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium`}
-                                        dir="ltr" 
-                                    />
+                                    <User className={`absolute top-3.5 right-3 text-slate-400`} size={18} />
+                                    <input type="text" value={name} onChange={(e) => setName(e.target.value)} className={`w-full pr-10 pl-3 p-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium`} />
                                 </div>
                             </div>
                             <div className="space-y-1">
                                 <label className="text-xs font-bold text-slate-500 uppercase ml-1">{t('phone_number')}</label>
                                 <div className="relative">
-                                    <Phone className={`absolute top-3.5 ${language === 'he' ? 'right-3' : 'left-3'} text-slate-400`} size={18} />
-                                    <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className={`w-full ${language === 'he' ? 'pr-10 pl-3' : 'pl-10 pr-3'} p-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium text-start`} />
+                                    <Phone className={`absolute top-3.5 right-3 text-slate-400`} size={18} />
+                                    <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className={`w-full pr-10 pl-3 p-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl outline-none font-medium text-start`} />
                                 </div>
                             </div>
                             <div className="flex gap-3 pt-2">
@@ -240,7 +224,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onEditTrip }) => {
                         </div>
                     ) : (
                         <div className="text-center w-full flex flex-col items-center">
-                            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-1">{language === 'en' && user.displayNameEn ? user.displayNameEn : user.displayName}</h3>
+                            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-1">{user.displayName}</h3>
                             <p className="text-indigo-600 dark:text-indigo-400 font-medium mb-3">{user.phoneNumber}</p>
                             
                             <div className="mb-5">

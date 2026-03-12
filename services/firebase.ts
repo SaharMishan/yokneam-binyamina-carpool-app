@@ -192,7 +192,7 @@ export const db = {
             const notifRef = doc(collection(dbInstance, 'notifications'));
             transaction.set(notifRef, {
                 userId: passengerId,
-                type: 'info',
+                type: 'cancel',
                 title: 'notif_rejected_title',
                 message: 'notif_rejected_msg',
                 relatedTripId: tripId,
@@ -217,7 +217,7 @@ export const db = {
             const notifRef = doc(collection(dbInstance, 'notifications'));
             transaction.set(notifRef, {
                 userId: passengerId,
-                type: 'info',
+                type: 'cancel',
                 title: 'notif_removed_title',
                 message: 'notif_removed_msg',
                 relatedTripId: tripId,
@@ -238,7 +238,7 @@ export const db = {
             const notifRef = doc(collection(dbInstance, 'notifications'));
             transaction.set(notifRef, {
                 userId: data.driverId,
-                type: 'info',
+                type: 'invite_accepted',
                 title: 'invite_accepted',
                 message: `notif_invite_accepted|${passenger.name}`,
                 relatedTripId: tripId,
@@ -266,7 +266,7 @@ export const db = {
             const notifRef = doc(collection(dbInstance, 'notifications'));
             transaction.set(notifRef, {
                 userId: data.driverId,
-                type: 'info',
+                type: 'cancel',
                 title: 'notif_passenger_left_title',
                 message: `notif_passenger_left_msg|${passenger.name}`,
                 relatedTripId: tripId,

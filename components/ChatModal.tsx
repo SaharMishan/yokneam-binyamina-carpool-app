@@ -7,6 +7,7 @@ import { ChatMessage, Trip } from '../types';
 import { collection, query, where, onSnapshot, Timestamp, doc, orderBy } from 'firebase/firestore';
 import { X, Send, MessageCircle, MapPin, Camera, Image as ImageIcon, Loader2, Navigation, Map as MapIcon, AlertCircle, Lock, Info, Compass, Mic, Square, Play, Pause, Trash2 } from 'lucide-react';
 import Portal from './Portal';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface ChatModalProps {
     isOpen: boolean;
@@ -159,7 +160,7 @@ const AudioPlayer: React.FC<{ url: string, duration?: number, isMe: boolean }> =
 
 const TypingIndicator: React.FC<{ trip: Trip }> = ({ trip }) => {
     const { user } = useAuth();
-    const { t, language } = useLocalization();
+    const { t } = useLocalization();
     const [typingUsers, setTypingUsers] = useState<string[]>([]);
 
     useEffect(() => {
@@ -196,7 +197,7 @@ const TypingIndicator: React.FC<{ trip: Trip }> = ({ trip }) => {
         text = t('is_typing').replace('{name}', name); 
     } else {
         const count = typingUsers.length;
-        text = language === 'he' ? `${count} אנשים מקלידים...` : `${count} people are typing...`;
+        text = `${count} אנשים מקלידים...`;
     }
 
     return (
@@ -213,7 +214,7 @@ const TypingIndicator: React.FC<{ trip: Trip }> = ({ trip }) => {
 
 const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose, trip }) => {
     const { user } = useAuth();
-    const { t, dir, language } = useLocalization();
+    const { t, dir } = useLocalization();
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [newMessage, setNewMessage] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -393,7 +394,7 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose, trip }) => {
 
         } catch (err) {
             console.error("Microphone access denied:", err);
-            alert(language === 'he' ? "חובה לאשר גישה למיקרופון כדי להקליט הודעות קוליות." : "Microphone access is required to record voice messages.");
+            alert("חובה לאשר גישה למיקרופון כדי להקליט הודעות קוליות.");
         }
     };
 
@@ -428,7 +429,7 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose, trip }) => {
     const handleSendLocation = () => {
         if (!user || sendingLocation || sendingMedia) return;
         if (!navigator.geolocation) {
-            alert(language === 'he' ? 'הדפדפן שלך לא תומך בשיתוף מיקום' : 'Your browser does not support geolocation');
+            alert('הדפדפן שלך לא תומך בשיתוף מיקום');
             return;
         }
         setSendingLocation(true);
@@ -445,7 +446,7 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose, trip }) => {
             (err) => {
                 setSendingLocation(false);
                 if (err.code === 1) setShowLocationBlockedModal(true);
-                else alert(language === 'he' ? 'לא ניתן לקבוע מיקום כרגע.' : 'Unable to get location.');
+                else alert('לא ניתן לקבוע מיקום כרגע.');
             },
             geoOptions
         );
@@ -469,144 +470,172 @@ const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose, trip }) => {
         reader.readAsDataURL(file);
     };
 
-    if (!isOpen) return null;
-
     return (
         <Portal>
-            {showLocationBlockedModal && (
-                <div className="fixed inset-0 z-[1001] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in" onClick={() => setShowLocationBlockedModal(false)}>
-                    <div className="bg-white dark:bg-slate-900 w-full max-sm rounded-[2.5rem] shadow-2xl overflow-hidden border border-white/10 animate-scale-in relative" onClick={e => e.stopPropagation()}>
-                        <div className="p-8 flex flex-col items-center text-center">
-                            <div className="relative mb-6">
-                                <div className="w-20 h-20 bg-amber-50 dark:bg-amber-900/20 rounded-full flex items-center justify-center text-amber-600 ring-8 ring-amber-50/50 dark:ring-amber-900/10"><Lock size={40} className="animate-pulse" /></div>
-                                <div className="absolute -bottom-1 -right-1 bg-white dark:bg-slate-800 p-1.5 rounded-full shadow-md border border-slate-100 dark:border-slate-700"><MapPin size={16} className="text-indigo-600" /></div>
-                            </div>
-                            <h3 className="text-xl font-black text-slate-800 dark:text-white mb-4 leading-tight">{language === 'he' ? 'גישה למיקום חסומה' : 'Location Access Blocked'}</h3>
-                            <div className="w-full bg-slate-50 dark:bg-slate-800/50 p-6 rounded-3xl border border-slate-100 dark:border-slate-700/50 mb-8"><p className="text-sm font-bold text-slate-600 dark:text-slate-300 leading-relaxed text-start">{language === 'he' ? 'הגישה למיקום חסומה. עליך ללחוץ על סמל המנעול (🔒) שליד כתובת האתר למעלה ולבחור "אפשר" עבור מיקום.' : 'Location access is blocked. Please click the lock icon (🔒) near the URL and choose "Allow" for Location.'}</p></div>
-                            <button onClick={() => setShowLocationBlockedModal(false)} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl shadow-xl transition-all active:scale-95 shadow-indigo-500/20">{t('confirm')}</button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <AnimatePresence>
+                {isOpen && (
+                    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center sm:p-4" onClick={onClose}>
+                        <motion.div 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+                        ></motion.div>
 
-            {previewImage && (
-                <div className="fixed inset-0 z-[1000] bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-4 animate-fade-in" onClick={() => setPreviewImage(null)}>
-                    <button onClick={() => setPreviewImage(null)} className="absolute top-6 right-6 p-3 bg-white/10 rounded-full text-white transition-all active:scale-90"><X size={24} /></button>
-                    <img src={previewImage} alt="Preview" className="max-w-full max-h-[85vh] rounded-3xl shadow-2xl object-contain animate-scale-in" onClick={e => e.stopPropagation()} />
-                </div>
-            )}
-
-            <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 animate-fade-in" onClick={onClose}>
-                <div className="bg-white dark:bg-slate-900 w-full sm:max-w-md h-[90dvh] sm:h-[650px] rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col border border-white/20" onClick={e => e.stopPropagation()}>
-                    <div className="p-5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white flex items-center justify-between shrink-0 shadow-lg z-20">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2.5 bg-white/20 rounded-2xl backdrop-blur-md shadow-inner"><MessageCircle size={22} /></div>
-                            <div>
-                                <h3 className="font-black text-lg leading-tight tracking-tight">{t('chat_title')}</h3>
-                                <p className="text-[10px] opacity-70 font-bold uppercase tracking-widest mt-0.5">{t('chat_header_status').replace('{driver}', t('driver_label')).replace('{count}', approvedPassengers.length.toString())}</p>
-                            </div>
-                        </div>
-                        <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors active:scale-90"><X size={22} /></button>
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto p-5 bg-[#F8FAFC] dark:bg-slate-950 space-y-6 scrollbar-hide relative">
-                        {sendingLocation && (
-                            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 bg-indigo-600 text-white px-4 py-2 rounded-full shadow-xl flex items-center gap-2 animate-bounce border border-white/20 whitespace-nowrap">
-                                <Loader2 size={14} className="animate-spin" />
-                                <span className="text-[10px] font-black uppercase tracking-tight">מנסה לקבל מיקום...</span>
+                        {showLocationBlockedModal && (
+                            <div className="fixed inset-0 z-[1001] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4" onClick={() => setShowLocationBlockedModal(false)}>
+                                <motion.div 
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    className="bg-white dark:bg-slate-900 w-full max-sm rounded-[2.5rem] shadow-2xl overflow-hidden border border-white/10 relative" 
+                                    onClick={e => e.stopPropagation()}
+                                >
+                                    <div className="p-8 flex flex-col items-center text-center">
+                                        <div className="relative mb-6">
+                                            <div className="w-20 h-20 bg-amber-50 dark:bg-amber-900/20 rounded-full flex items-center justify-center text-amber-600 ring-8 ring-amber-50/50 dark:ring-amber-900/10"><Lock size={40} className="animate-pulse" /></div>
+                                            <div className="absolute -bottom-1 -right-1 bg-white dark:bg-slate-800 p-1.5 rounded-full shadow-md border border-slate-100 dark:border-slate-700"><MapPin size={16} className="text-indigo-600" /></div>
+                                        </div>
+                                        <h3 className="text-xl font-black text-slate-800 dark:text-white mb-4 leading-tight">גישה למיקום חסומה</h3>
+                                        <div className="w-full bg-slate-50 dark:bg-slate-800/50 p-6 rounded-3xl border border-slate-100 dark:border-slate-700/50 mb-8"><p className="text-sm font-bold text-slate-600 dark:text-slate-300 leading-relaxed text-start">הגישה למיקום חסומה. עליך ללחוץ על סמל המנעול (🔒) שליד כתובת האתר למעלה ולבחור "אפשר" עבור מיקום.</p></div>
+                                        <button onClick={() => setShowLocationBlockedModal(false)} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl shadow-xl transition-all active:scale-95 shadow-indigo-500/20">{t('confirm')}</button>
+                                    </div>
+                                </motion.div>
                             </div>
                         )}
-                        {loading ? (<div className="flex flex-col items-center justify-center py-20 gap-3"><Loader2 size={32} className="animate-spin text-indigo-50" /><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">טוען הודעות...</span></div>) : messages.length === 0 ? (<div className="text-center py-20 flex flex-col items-center gap-4 animate-fade-in"><div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-300"><MessageCircle size={32} /></div><p className="text-slate-400 text-sm font-black uppercase tracking-widest leading-relaxed">{t('no_messages')}</p></div>) : (
-                            messages.map((msg) => {
-                                const isMe = msg.senderId === user?.uid;
-                                const isDriver = msg.senderId === trip.driverId;
-                                const roleLabel = isDriver ? t('driver_label') : t('passenger_label');
-                                const isRichContent = msg.type === 'location' || msg.type === 'image' || msg.type === 'audio';
 
-                                return (
-                                    <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-slide-up`}>
-                                        <div className={`max-w-[260px] ${isRichContent ? 'p-0 bg-transparent shadow-none' : 'px-4 py-3'} rounded-[1.8rem] shadow-sm text-sm ${isMe && !isRichContent ? 'bg-indigo-600 text-white rounded-br-none shadow-indigo-600/10' : !isRichContent ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-none border border-slate-100 dark:border-slate-700' : ''}`}>
-                                            {!isMe && !isRichContent && (
-                                                <div className="flex items-center gap-2 mb-1.5">
-                                                    <span className="text-[10px] font-black uppercase text-indigo-600 dark:text-indigo-400 block truncate max-w-[120px]">{msg.senderName}</span>
-                                                    <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded-lg ${isDriver ? 'bg-amber-100 text-amber-600' : 'bg-indigo-50 text-indigo-500'}`}>{roleLabel}</span>
+                        {previewImage && (
+                            <div className="fixed inset-0 z-[1000] bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-4" onClick={() => setPreviewImage(null)}>
+                                <button onClick={() => setPreviewImage(null)} className="absolute top-6 right-6 p-3 bg-white/10 rounded-full text-white transition-all active:scale-90"><X size={24} /></button>
+                                <motion.img 
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    src={previewImage} 
+                                    alt="Preview" 
+                                    className="max-w-full max-h-[85vh] rounded-3xl shadow-2xl object-contain" 
+                                    onClick={e => e.stopPropagation()} 
+                                />
+                            </div>
+                        )}
+
+                        <motion.div 
+                            initial={{ y: "100%" }}
+                            animate={{ y: 0 }}
+                            exit={{ y: "100%" }}
+                            transition={{ type: "spring", damping: 30, stiffness: 300 }}
+                            className="bg-white dark:bg-slate-900 w-full sm:max-w-md h-[90dvh] sm:h-[650px] rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col border border-white/20 relative z-10" 
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <div className="p-5 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white flex items-center justify-between shrink-0 shadow-lg z-20">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2.5 bg-white/20 rounded-2xl backdrop-blur-md shadow-inner"><MessageCircle size={22} /></div>
+                                    <div>
+                                        <h3 className="font-black text-lg leading-tight tracking-tight">{t('chat_title')}</h3>
+                                        <p className="text-[10px] opacity-70 font-bold uppercase tracking-widest mt-0.5">{t('chat_header_status').replace('{driver}', t('driver_label')).replace('{count}', approvedPassengers.length.toString())}</p>
+                                    </div>
+                                </div>
+                                <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors active:scale-90"><X size={22} /></button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-5 bg-[#F8FAFC] dark:bg-slate-950 space-y-6 scrollbar-hide relative">
+                                {sendingLocation && (
+                                    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 bg-indigo-600 text-white px-4 py-2 rounded-full shadow-xl flex items-center gap-2 animate-bounce border border-white/20 whitespace-nowrap">
+                                        <Loader2 size={14} className="animate-spin" />
+                                        <span className="text-[10px] font-black uppercase tracking-tight">מנסה לקבל מיקום...</span>
+                                    </div>
+                                )}
+                                {loading ? (<div className="flex flex-col items-center justify-center py-20 gap-3"><Loader2 size={32} className="animate-spin text-indigo-50" /><span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">טוען הודעות...</span></div>) : messages.length === 0 ? (<div className="text-center py-20 flex flex-col items-center gap-4 animate-fade-in"><div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-300"><MessageCircle size={32} /></div><p className="text-slate-400 text-sm font-black uppercase tracking-widest leading-relaxed">{t('no_messages')}</p></div>) : (
+                                    messages.map((msg) => {
+                                        const isMe = msg.senderId === user?.uid;
+                                        const isDriver = msg.senderId === trip.driverId;
+                                        const roleLabel = isDriver ? t('driver_label') : t('passenger_label');
+                                        const isRichContent = msg.type === 'location' || msg.type === 'image' || msg.type === 'audio';
+
+                                        return (
+                                            <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} animate-slide-up`}>
+                                                <div className={`max-w-[260px] ${isRichContent ? 'p-0 bg-transparent shadow-none' : 'px-4 py-3'} rounded-[1.8rem] shadow-sm text-sm ${isMe && !isRichContent ? 'bg-indigo-600 text-white rounded-br-none shadow-indigo-600/10' : !isRichContent ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-none border border-slate-100 dark:border-slate-700' : ''}`}>
+                                                    {!isMe && !isRichContent && (
+                                                        <div className="flex items-center gap-2 mb-1.5">
+                                                            <span className="text-[10px] font-black uppercase text-indigo-600 dark:text-indigo-400 block truncate max-w-[120px]">{msg.senderName}</span>
+                                                            <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded-lg ${isDriver ? 'bg-amber-100 text-amber-600' : 'bg-indigo-50 text-indigo-500'}`}>{roleLabel}</span>
+                                                        </div>
+                                                    )}
+                                                    {msg.type === 'text' && <p className="leading-relaxed font-bold whitespace-pre-wrap break-words">{msg.text}</p>}
+                                                    {msg.type === 'image' && (
+                                                        <div className="relative group cursor-pointer rounded-[2rem] overflow-hidden border-2 border-white dark:border-slate-700 shadow-xl w-[170px] h-[170px] shrink-0" onClick={() => setPreviewImage(msg.imageUrl || null)}>
+                                                            <img src={msg.imageUrl} alt="" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
+                                                        </div>
+                                                    )}
+                                                    {msg.type === 'audio' && msg.audioUrl && (
+                                                        <div className={`rounded-[2rem] shadow-md p-1 ${isMe ? 'bg-indigo-600 rounded-br-none' : 'bg-white dark:bg-slate-800 rounded-bl-none border border-slate-100 dark:border-slate-700'}`}>
+                                                            <AudioPlayer url={msg.audioUrl} duration={msg.audioDuration} isMe={isMe} />
+                                                        </div>
+                                                    )}
+                                                    {msg.type === 'location' && msg.location && (
+                                                        <div className="w-[170px] bg-white dark:bg-slate-800 rounded-[2rem] shadow-2xl border border-indigo-100 dark:border-indigo-900 overflow-hidden flex flex-col group transition-all duration-300">
+                                                            <div className="h-16 w-full relative overflow-hidden flex items-center justify-center bg-indigo-50 dark:bg-indigo-950/40">
+                                                                <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'linear-gradient(#e0e7ff 1px, transparent 1px), linear-gradient(90deg, #e0e7ff 1px, transparent 1px)', backgroundSize: '15px 15px' }}></div>
+                                                                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-indigo-500/10 to-transparent h-full w-full animate-[scan_3s_linear_infinite]"></div>
+                                                                <div className="relative bg-white dark:bg-slate-700 p-1.5 rounded-xl shadow-lg border border-indigo-100 dark:border-indigo-900 group-hover:scale-110 transition-transform duration-500 z-10"><MapPin size={18} className="text-indigo-600 animate-bounce" fill="currentColor" fillOpacity={0.1} /></div>
+                                                            </div>
+                                                            <div className="p-2.5 text-center bg-white dark:bg-slate-800 border-t border-indigo-50 dark:border-slate-700"><h4 className="text-[11px] font-black text-slate-800 dark:text-white tracking-tight truncate leading-tight">{isMe ? 'המיקום שלי' : `המיקום של ${msg.senderName.split(' ')[0]}`}</h4></div>
+                                                            <div className="px-2 pb-2.5 pt-0.5 bg-slate-50/50 dark:bg-slate-800/50 grid grid-cols-2 gap-2 h-10">
+                                                                <a href={`https://waze.com/ul?ll=${msg.location.lat},${msg.location.lng}&navigate=yes`} target="_blank" rel="noreferrer" className="h-full bg-[#33CCFF] hover:bg-[#2BB8E6] text-white rounded-xl flex flex-row items-center justify-center gap-1 px-1 transition-all active:scale-95 shadow-sm group/btn overflow-hidden"><div className="shrink-0 scale-75"><WazeLogo /></div><span className="text-[8px] font-black tracking-widest uppercase whitespace-nowrap">WAZE</span></a>
+                                                                <a href={`https://www.google.com/maps/search/?api=1&query=${msg.location.lat},${msg.location.lng}`} target="_blank" rel="noreferrer" className="h-full bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 text-slate-800 dark:text-slate-200 rounded-xl flex flex-row items-center justify-center gap-1 px-1 transition-all active:scale-95 shadow-sm group/btn overflow-hidden"><div className="shrink-0 scale-75"><GoogleMapsLogo /></div><span className="text-[8px] font-black tracking-tight uppercase whitespace-nowrap">GOOGLE</span></a>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {!isRichContent && (
+                                                        <span className={`text-[8px] block mt-1.5 ${isMe ? 'text-white/60 text-start' : 'text-slate-400 text-end'} font-black uppercase tracking-widest px-1`}>{msg.createdAt ? msg.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute:'2-digit' }) : ''}</span>
+                                                    )}
                                                 </div>
-                                            )}
-                                            {msg.type === 'text' && <p className="leading-relaxed font-bold whitespace-pre-wrap break-words">{msg.text}</p>}
-                                            {msg.type === 'image' && (
-                                                <div className="relative group cursor-pointer rounded-[2rem] overflow-hidden border-2 border-white dark:border-slate-700 shadow-xl w-[170px] h-[170px] shrink-0" onClick={() => setPreviewImage(msg.imageUrl || null)}>
-                                                    <img src={msg.imageUrl} alt="" className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
-                                                </div>
-                                            )}
-                                            {msg.type === 'audio' && msg.audioUrl && (
-                                                <div className={`rounded-[2rem] shadow-md p-1 ${isMe ? 'bg-indigo-600 rounded-br-none' : 'bg-white dark:bg-slate-800 rounded-bl-none border border-slate-100 dark:border-slate-700'}`}>
-                                                    <AudioPlayer url={msg.audioUrl} duration={msg.audioDuration} isMe={isMe} />
-                                                </div>
-                                            )}
-                                            {msg.type === 'location' && msg.location && (
-                                                <div className="w-[170px] bg-white dark:bg-slate-800 rounded-[2rem] shadow-2xl border border-indigo-100 dark:border-indigo-900 overflow-hidden flex flex-col group transition-all duration-300">
-                                                    <div className="h-16 w-full relative overflow-hidden flex items-center justify-center bg-indigo-50 dark:bg-indigo-950/40">
-                                                        <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'linear-gradient(#e0e7ff 1px, transparent 1px), linear-gradient(90deg, #e0e7ff 1px, transparent 1px)', backgroundSize: '15px 15px' }}></div>
-                                                        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-indigo-500/10 to-transparent h-full w-full animate-[scan_3s_linear_infinite]"></div>
-                                                        <div className="relative bg-white dark:bg-slate-700 p-1.5 rounded-xl shadow-lg border border-indigo-100 dark:border-indigo-900 group-hover:scale-110 transition-transform duration-500 z-10"><MapPin size={18} className="text-indigo-600 animate-bounce" fill="currentColor" fillOpacity={0.1} /></div>
-                                                    </div>
-                                                    <div className="p-2.5 text-center bg-white dark:bg-slate-800 border-t border-indigo-50 dark:border-slate-700"><h4 className="text-[11px] font-black text-slate-800 dark:text-white tracking-tight truncate leading-tight">{isMe ? 'המיקום שלי' : `המיקום של ${msg.senderName.split(' ')[0]}`}</h4></div>
-                                                    <div className="px-2 pb-2.5 pt-0.5 bg-slate-50/50 dark:bg-slate-800/50 grid grid-cols-2 gap-2 h-10">
-                                                        <a href={`https://waze.com/ul?ll=${msg.location.lat},${msg.location.lng}&navigate=yes`} target="_blank" rel="noreferrer" className="h-full bg-[#33CCFF] hover:bg-[#2BB8E6] text-white rounded-xl flex flex-row items-center justify-center gap-1 px-1 transition-all active:scale-95 shadow-sm group/btn overflow-hidden"><div className="shrink-0 scale-75"><WazeLogo /></div><span className="text-[8px] font-black tracking-widest uppercase whitespace-nowrap">WAZE</span></a>
-                                                        <a href={`https://www.google.com/maps/search/?api=1&query=${msg.location.lat},${msg.location.lng}`} target="_blank" rel="noreferrer" className="h-full bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 text-slate-800 dark:text-slate-200 rounded-xl flex flex-row items-center justify-center gap-1 px-1 transition-all active:scale-95 shadow-sm group/btn overflow-hidden"><div className="shrink-0 scale-75"><GoogleMapsLogo /></div><span className="text-[8px] font-black tracking-tight uppercase whitespace-nowrap">GOOGLE</span></a>
-                                                    </div>
-                                                </div>
-                                            )}
-                                            {!isRichContent && (
-                                                <span className={`text-[8px] block mt-1.5 ${isMe ? 'text-white/60 text-start' : 'text-slate-400 text-end'} font-black uppercase tracking-widest px-1`}>{msg.createdAt ? msg.createdAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute:'2-digit' }) : ''}</span>
-                                            )}
+                                            </div>
+                                        );
+                                    })
+                                )}
+                                <div ref={messagesEndRef} className="h-4" />
+                            </div>
+
+                            <div className="bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 p-4 pb-safe shrink-0 z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.02)]">
+                                <TypingIndicator trip={trip} />
+                                
+                                {isRecording ? (
+                                    <div className="flex items-center gap-2 bg-rose-50 dark:bg-rose-900/20 p-2.5 rounded-[2rem] animate-fade-in border border-rose-100 dark:border-rose-800/50 shadow-inner overflow-hidden">
+                                        <div className="w-10 h-10 bg-rose-500 rounded-full flex items-center justify-center text-white animate-pulse shadow-lg shrink-0"><Mic size={18} /></div>
+                                        <div className="flex-1 flex flex-row items-center gap-2 min-w-0">
+                                            <div className="flex flex-col shrink-0 min-w-[50px]">
+                                                <span className="text-[8px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest leading-none mb-1">מקליט...</span>
+                                                <span className="text-sm font-black text-rose-700 dark:text-rose-300 tabular-nums leading-none">{formatSeconds(recordingTime)}</span>
+                                            </div>
+                                            <div className="flex-1 overflow-hidden flex items-center">{activeStream && <AudioVisualizer stream={activeStream} />}</div>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 shrink-0">
+                                            <button onClick={cancelRecording} className="p-2.5 bg-white dark:bg-slate-800 text-slate-400 hover:text-rose-600 rounded-xl shadow-sm transition-all active:scale-90"><Trash2 size={18} /></button>
+                                            <button onClick={stopRecording} className="p-2.5 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-600/20 active:scale-90 transition-all flex items-center gap-1.5 font-bold px-4"><Send size={15} /> <span className="text-xs">שלח</span></button>
                                         </div>
                                     </div>
-                                );
-                            })
-                        )}
-                        <div ref={messagesEndRef} className="h-4" />
-                    </div>
-
-                    <div className="bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 p-4 pb-safe shrink-0 z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.02)]">
-                        <TypingIndicator trip={trip} />
-                        
-                        {isRecording ? (
-                            <div className="flex items-center gap-2 bg-rose-50 dark:bg-rose-900/20 p-2.5 rounded-[2rem] animate-fade-in border border-rose-100 dark:border-rose-800/50 shadow-inner overflow-hidden">
-                                <div className="w-10 h-10 bg-rose-500 rounded-full flex items-center justify-center text-white animate-pulse shadow-lg shrink-0"><Mic size={18} /></div>
-                                <div className="flex-1 flex flex-row items-center gap-2 min-w-0">
-                                    <div className="flex flex-col shrink-0 min-w-[50px]">
-                                        <span className="text-[8px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest leading-none mb-1">מקליט...</span>
-                                        <span className="text-sm font-black text-rose-700 dark:text-rose-300 tabular-nums leading-none">{formatSeconds(recordingTime)}</span>
-                                    </div>
-                                    <div className="flex-1 overflow-hidden flex items-center">{activeStream && <AudioVisualizer stream={activeStream} />}</div>
-                                </div>
-                                <div className="flex items-center gap-1.5 shrink-0">
-                                    <button onClick={cancelRecording} className="p-2.5 bg-white dark:bg-slate-800 text-slate-400 hover:text-rose-600 rounded-xl shadow-sm transition-all active:scale-90"><Trash2 size={18} /></button>
-                                    <button onClick={stopRecording} className="p-2.5 bg-indigo-600 text-white rounded-xl shadow-lg shadow-indigo-600/20 active:scale-90 transition-all flex items-center gap-1.5 font-bold px-4"><Send size={15} /> <span className="text-xs">שלח</span></button>
-                                </div>
+                                ) : (
+                                    <>
+                                        <div className="flex items-center gap-3 mb-3 px-1">
+                                            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileSelect} />
+                                            <input type="file" ref={cameraInputRef} className="hidden" accept="image/*" capture="environment" onChange={handleFileSelect} />
+                                            <button onClick={() => cameraInputRef.current?.click()} disabled={sendingMedia || sendingLocation} className="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl text-slate-500 hover:text-indigo-600 transition-all active:scale-90" title={t('take_photo')}><Camera size={22} /></button>
+                                            <button onClick={() => fileInputRef.current?.click()} disabled={sendingMedia || sendingLocation} className="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl text-slate-500 hover:text-indigo-600 transition-all active:scale-90"><ImageIcon size={22} /></button>
+                                            <button onClick={handleSendLocation} disabled={sendingLocation || sendingMedia} className={`p-2.5 rounded-xl transition-all active:scale-90 ${sendingLocation ? 'bg-indigo-600 text-white' : 'bg-slate-50 dark:bg-slate-800 text-slate-500 hover:text-indigo-600'}`}>
+                                                {sendingLocation ? <Loader2 size={22} className="animate-spin" /> : <MapPin size={22} />}
+                                            </button>
+                                            <button onClick={startRecording} disabled={sendingMedia || sendingLocation} className="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl text-slate-500 hover:text-rose-500 transition-all active:scale-90 ml-auto"><Mic size={22} /></button>
+                                        </div>
+                                        <form onSubmit={handleSend} className="flex gap-3"> 
+                                            <input type="text" value={newMessage} onChange={handleInputChange} placeholder={t('chat_placeholder')} className="flex-1 bg-slate-100 dark:bg-slate-800 border-none rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm font-bold text-slate-800 dark:text-white placeholder-slate-400 shadow-inner" />
+                                            <button type="submit" disabled={!newMessage.trim() || sendingMedia || sendingLocation} className="w-14 h-14 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-600/30 active:scale-90 transition-all"><Send size={24} className={dir === 'rtl' ? 'rotate-180' : ''} /></button>
+                                        </form>
+                                    </>
+                                )}
                             </div>
-                        ) : (
-                            <>
-                                <div className="flex items-center gap-3 mb-3 px-1">
-                                    <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileSelect} />
-                                    <input type="file" ref={cameraInputRef} className="hidden" accept="image/*" capture="environment" onChange={handleFileSelect} />
-                                    <button onClick={() => cameraInputRef.current?.click()} disabled={sendingMedia || sendingLocation} className="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl text-slate-500 hover:text-indigo-600 transition-all active:scale-90" title={t('take_photo')}><Camera size={22} /></button>
-                                    <button onClick={() => fileInputRef.current?.click()} disabled={sendingMedia || sendingLocation} className="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl text-slate-500 hover:text-indigo-600 transition-all active:scale-90"><ImageIcon size={22} /></button>
-                                    <button onClick={handleSendLocation} disabled={sendingLocation || sendingMedia} className={`p-2.5 rounded-xl transition-all active:scale-90 ${sendingLocation ? 'bg-indigo-600 text-white' : 'bg-slate-50 dark:bg-slate-800 text-slate-500 hover:text-indigo-600'}`}>
-                                        {sendingLocation ? <Loader2 size={22} className="animate-spin" /> : <MapPin size={22} />}
-                                    </button>
-                                    <button onClick={startRecording} disabled={sendingMedia || sendingLocation} className="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl text-slate-500 hover:text-rose-500 transition-all active:scale-90 ml-auto"><Mic size={22} /></button>
-                                </div>
-                                <form onSubmit={handleSend} className="flex gap-3"> 
-                                    <input type="text" value={newMessage} onChange={handleInputChange} placeholder={t('chat_placeholder')} className="flex-1 bg-slate-100 dark:bg-slate-800 border-none rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm font-bold text-slate-800 dark:text-white placeholder-slate-400 shadow-inner" />
-                                    <button type="submit" disabled={!newMessage.trim() || sendingMedia || sendingLocation} className="w-14 h-14 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-xl shadow-indigo-600/30 active:scale-90 transition-all"><Send size={24} className={dir === 'rtl' ? 'rotate-180' : ''} /></button>
-                                </form>
-                            </>
-                        )}
+                        </motion.div>
                     </div>
-                </div>
-            </div>
+                )}
+            </AnimatePresence>
             <style>{`
                 @keyframes scan { from { transform: translateY(-100%); } to { transform: translateY(100%); } }
             `}</style>

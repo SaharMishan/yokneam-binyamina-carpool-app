@@ -22,6 +22,7 @@ import InstallGuide from './components/InstallGuide';
 import { Direction, Trip } from './types';
 import { db } from './services/firebase';
 import { CarFront, Cloud } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
 const CoolLoader = ({ message }: { message: string }) => (
     <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 overflow-hidden">
@@ -227,8 +228,18 @@ const AppContent = () => {
                 />
 
                 <main className="flex-1 overflow-y-auto scrollbar-hide pt-16 pb-20 md:pb-6">
-                    <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 py-4 animate-fade-in">
-                        {renderView()}
+                    <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 py-4">
+                        <AnimatePresence mode="wait">
+                            <motion.div
+                                key={currentView}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                transition={{ duration: 0.2, ease: "easeOut" }}
+                            >
+                                {renderView()}
+                            </motion.div>
+                        </AnimatePresence>
                     </div>
                 </main>
                 

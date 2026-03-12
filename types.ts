@@ -4,7 +4,6 @@ import { Timestamp } from 'firebase/firestore';
 export interface UserProfile {
     uid: string;
     displayName: string | null;
-    displayNameEn?: string | null;
     email: string | null;
     phoneNumber: string;
     photoURL?: string;
@@ -44,7 +43,6 @@ export interface Trip {
     type: TripType;
     driverId: string;
     driverName: string;
-    driverNameEn?: string;
     driverPhoto?: string; 
     direction: Direction;
     departureTime: Timestamp;

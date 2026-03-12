@@ -10,10 +10,10 @@ interface AuthContextType {
     loading: boolean;
     signInWithGoogle: () => Promise<void>;
     signOut: () => Promise<void>;
-    completeUserProfile: (phoneNumber: string, fullName?: string, fullNameEn?: string) => Promise<void>;
+    completeUserProfile: (phoneNumber: string, fullName?: string) => Promise<void>;
     updateProfile: (data: Partial<UserProfile>) => Promise<void>;
     signInWithEmail: (email: string, pass: string) => Promise<void>;
-    registerWithEmail: (name: string, phone: string, email: string, pass: string, nameEn?: string) => Promise<void>;
+    registerWithEmail: (name: string, phone: string, email: string, pass: string) => Promise<void>;
     sendPasswordReset: (email: string) => Promise<void>;
 }
 
@@ -37,7 +37,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const newUserProfile: UserProfile = {
                 uid: loggedInUser.uid,
                 displayName: loggedInUser.displayName || 'Guest',
-                displayNameEn: null,
                 email: loggedInUser.email?.toLowerCase().trim() || null,
                 phoneNumber: '',
                 photoURL: loggedInUser.photoURL || '',
@@ -110,7 +109,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         await auth.signInWithEmailAndPassword(cleanEmail, pass);
     };
 
-    const registerWithEmail = async (name: string, phone: string, email: string, pass: string, nameEn?: string) => {
+    const registerWithEmail = async (name: string, phone: string, email: string, pass: string) => {
         const cleanEmail = email.toLowerCase().trim();
         const { user: newFirebaseUser } = await auth.createUserWithEmailAndPassword(cleanEmail, pass) as { user: any };
         if (newFirebaseUser) {
@@ -118,7 +117,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const newUserProfile: UserProfile = {
                 uid: newFirebaseUser.uid,
                 displayName: name,
-                displayNameEn: nameEn || null,
                 email: cleanEmail,
                 phoneNumber: phone,
                 isAdmin: isMaster,
@@ -129,11 +127,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     };
 
-    const completeUserProfile = async (phoneNumber: string, fullName?: string, fullNameEn?: string) => {
+    const completeUserProfile = async (phoneNumber: string, fullName?: string) => {
         if (!firebaseUser) return;
         const update: any = { phoneNumber };
         if (fullName) update.displayName = fullName;
-        if (fullNameEn) update.displayNameEn = fullNameEn;
         await db.updateUserProfile(firebaseUser.uid, update);
     };
 

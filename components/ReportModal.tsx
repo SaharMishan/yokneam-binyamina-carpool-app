@@ -5,6 +5,7 @@ import { useLocalization } from '../context/LocalizationContext';
 import { db } from '../services/firebase';
 import { X, Bug, Lightbulb, Send, CheckCircle, Loader2 } from 'lucide-react';
 import Portal from './Portal';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface ReportModalProps {
     isOpen: boolean;
@@ -18,8 +19,6 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose }) => {
     const [description, setDescription] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
-
-    if (!isOpen) return null;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -52,8 +51,23 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose }) => {
 
     return (
         <Portal>
-            <div className="fixed inset-0 z-[200] bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
-                <div className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2.5rem] shadow-2xl overflow-hidden animate-scale-in border border-slate-100 dark:border-slate-800" onClick={e => e.stopPropagation()}>
+            <AnimatePresence>
+                {isOpen && (
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" onClick={onClose}>
+                        <motion.div 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-slate-900/70 backdrop-blur-md"
+                        ></motion.div>
+
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-800 relative z-10" 
+                            onClick={e => e.stopPropagation()}
+                        >
                     {isSuccess ? (
                         <div className="p-10 flex flex-col items-center justify-center text-center">
                             <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mb-6 animate-float">
@@ -78,9 +92,11 @@ const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose }) => {
                             </form>
                         </>
                     )}
-                </div>
+                </motion.div>
             </div>
-        </Portal>
+        )}
+    </AnimatePresence>
+</Portal>
     );
 };
 

@@ -14,7 +14,7 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ onMenuClick, onLogoClick, onNavigateToTrip }) => {
-    const { t, language, toggleLanguage, isDarkMode, toggleTheme, dir } = useLocalization();
+    const { t, isDarkMode, toggleTheme, dir } = useLocalization();
     const { user } = useAuth();
     const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, clearAllNotifications, setActiveSystemMessage } = useNotifications();
     const [showNotifications, setShowNotifications] = useState(false);
@@ -140,7 +140,6 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onLogoClick, onNavigateToT
                         )}
                     </div>
                     <button onClick={toggleTheme} className="p-2 rounded-full text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 hidden sm:block">{isDarkMode ? <Moon size={20} /> : <Sun size={20} />}</button>
-                    <button onClick={toggleLanguage} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"><Globe size={16} /><span className="text-xs font-black uppercase tracking-widest">{language}</span></button>
                 </div>
             </div>
         </header>

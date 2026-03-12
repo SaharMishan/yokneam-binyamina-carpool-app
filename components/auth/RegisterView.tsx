@@ -13,7 +13,6 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin }) => {
     const { t, dir } = useLocalization();
     const { registerWithEmail } = useAuth();
     const [name, setName] = useState('');
-    const [nameEn, setNameEn] = useState(''); 
     const [phone, setPhone] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -52,7 +51,7 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin }) => {
         try {
             // Fix: persistenceType must be 'local' or 'session'. Changed 'none' to 'session' to fix TS error.
             await authService.setPersistence(rememberMe ? 'local' : 'session');
-            await registerWithEmail(name, phone, email, password, nameEn);
+            await registerWithEmail(name, phone, email, password);
         } catch (err: any) {
             setIsSubmitting(false);
             console.error("Registration failed error code:", err.code);
@@ -101,19 +100,6 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onSwitchToLogin }) => {
                             : 'border-slate-200 dark:border-slate-700 focus:ring-indigo-500/20 focus:border-indigo-600 hover:border-slate-300'
                         }`} 
                         placeholder={t('full_name')}
-                    />
-                </div>
-
-                <div className="relative group">
-                    <div className={`absolute inset-y-0 start-0 flex items-center ps-4 pointer-events-none transition-colors ${error ? 'text-red-400' : 'text-slate-400 group-focus-within:text-indigo-600'}`}>
-                        <Globe className="w-5 h-5" />
-                    </div>
-                    <input 
-                        type="text" 
-                        value={nameEn} 
-                        onChange={(e) => { setNameEn(e.target.value); setError(null); }} 
-                        className={`text-start w-full ps-12 p-3.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 transition-all outline-none font-medium text-base text-slate-900 dark:text-white placeholder-slate-400 focus:ring-indigo-500/20 focus:border-indigo-600 hover:border-slate-300`} 
-                        placeholder={t('full_name_en')}
                     />
                 </div>
                 

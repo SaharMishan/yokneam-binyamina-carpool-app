@@ -7,7 +7,7 @@ import CarDetailsModal from './CarDetailsModal';
 import TermsModal from './TermsModal';
 
 const SettingsView: React.FC = () => {
-    const { t, isDarkMode, toggleTheme, language, toggleLanguage, dir } = useLocalization();
+    const { t, isDarkMode, toggleTheme, dir } = useLocalization();
     const { user, updateProfile, signOut } = useAuth();
     
     const [notifications, setNotifications] = useState(user?.privacySettings?.notificationsEnabled ?? true);
@@ -109,13 +109,6 @@ const SettingsView: React.FC = () => {
                     title={t('settings_theme')} 
                     desc={isDarkMode ? t('settings_theme_dark') : t('settings_theme_light')} 
                     action={<Toggle checked={isDarkMode} onChange={toggleTheme} />} 
-                 />
-
-                 <SettingItem 
-                    icon={Globe} 
-                    title={t('settings_language')} 
-                    desc={language === 'he' ? 'עברית' : 'English'} 
-                    action={<button onClick={toggleLanguage} className="text-indigo-600 font-bold text-xs bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1.5 rounded-lg border border-indigo-100 dark:border-indigo-800">{language.toUpperCase()}</button>} 
                  />
 
                 <div className="w-full h-px bg-slate-200 dark:bg-slate-700/50 my-2"></div>

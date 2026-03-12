@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLocalization } from '../context/LocalizationContext';
 import { X, Home, Calendar, User, Info, LogOut, ChevronRight, Settings, CarFront, ShieldCheck, Flag, Download } from 'lucide-react';
 import BadgeDisplay from './BadgeDisplay';
+import { motion, AnimatePresence } from 'motion/react';
 
 interface SideMenuProps {
     isOpen: boolean;
@@ -17,7 +18,7 @@ interface SideMenuProps {
 
 const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, currentView, setView, isDesktop = false, onOpenReport, onOpenInstall }) => {
     const { user, signOut } = useAuth();
-    const { t, dir, language } = useLocalization();
+    const { t, dir } = useLocalization();
 
     const handleNavigation = (view: string) => {
         // Close menu first to prevent laggy perception
@@ -73,7 +74,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, currentView, setVi
                 </div>
                 <div className="flex flex-col overflow-hidden flex-1 min-w-0">
                     <span className="text-[13px] font-black text-slate-800 dark:text-white group-hover:text-indigo-600 transition-colors leading-tight mb-1 break-words">
-                        {language === 'en' && user.displayNameEn ? user.displayNameEn : user.displayName}
+                        {user.displayName}
                     </span>
                     <div className="flex flex-col gap-1">
                         <BadgeDisplay userId={user.uid} size="sm" />
@@ -151,83 +152,96 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, currentView, setVi
         );
     }
 
-    if (!isOpen) return null;
-
-    const drawerClasses = `relative w-[85%] max-w-xs bg-white dark:bg-slate-900 h-full shadow-2xl flex flex-col transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${dir === 'rtl' ? 'animate-[slideRight_0.4s_cubic-bezier(0.32,0.72,0,1)]' : 'animate-[slideLeft_0.4s_cubic-bezier(0.32,0.72,0,1)]'}`;
-
     return (
-        <div className="fixed inset-0 z-[100] flex md:hidden">
-            {/* Overlay */}
-            <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px] animate-fade-in touch-none" onClick={onClose}></div>
-            
-            <div dir={dir} className={drawerClasses}>
-                <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 shrink-0">
-                    <div className="flex items-center justify-between mb-8">
-                        <div 
-                            onClick={() => handleNavigation('home')} 
-                            className="flex items-center gap-2.5 cursor-pointer active:opacity-80 transition-opacity min-w-0 flex-1 touch-manipulation"
-                        >
-                            <div className="bg-gradient-to-tr from-blue-600 to-indigo-600 text-white p-2 rounded-xl shadow-lg shrink-0">
-                                <CarFront size={18} className="text-white" />
+        <AnimatePresence>
+            {isOpen && (
+                <div className="fixed inset-0 z-[100] flex md:hidden">
+                    {/* Overlay */}
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px] touch-none" 
+                        onClick={onClose}
+                    ></motion.div>
+                    
+                    <motion.div 
+                        dir={dir} 
+                        initial={{ x: dir === 'rtl' ? '100%' : '-100%' }}
+                        animate={{ x: 0 }}
+                        exit={{ x: dir === 'rtl' ? '100%' : '-100%' }}
+                        transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                        className="relative w-[85%] max-w-xs bg-white dark:bg-slate-900 h-full shadow-2xl flex flex-col"
+                    >
+                        <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 shrink-0">
+                            <div className="flex items-center justify-between mb-8">
+                                <div 
+                                    onClick={() => handleNavigation('home')} 
+                                    className="flex items-center gap-2.5 cursor-pointer active:opacity-80 transition-opacity min-w-0 flex-1 touch-manipulation"
+                                >
+                                    <div className="bg-gradient-to-tr from-blue-600 to-indigo-600 text-white p-2 rounded-xl shadow-lg shrink-0">
+                                        <CarFront size={18} className="text-white" />
+                                    </div>
+                                    <h2 className="text-[15px] font-black text-slate-800 dark:text-white leading-tight tracking-tight whitespace-nowrap">
+                                        {t('app_title')}
+                                    </h2>
+                                </div>
+                                <button 
+                                    onClick={onClose} 
+                                    className="p-2 bg-white dark:bg-slate-800 shadow-md rounded-full text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all border border-slate-100 dark:border-slate-700 shrink-0 active:scale-90 ml-2 touch-manipulation"
+                                >
+                                    <X size={16} />
+                                </button>
                             </div>
-                            <h2 className="text-[15px] font-black text-slate-800 dark:text-white leading-tight tracking-tight whitespace-nowrap">
-                                {t('app_title')}
-                            </h2>
+
+                            <InstallButton />
+
+                            <UserProfileSection />
                         </div>
-                        <button 
-                            onClick={onClose} 
-                            className="p-2 bg-white dark:bg-slate-800 shadow-md rounded-full text-slate-500 hover:text-slate-900 dark:hover:text-white transition-all border border-slate-100 dark:border-slate-700 shrink-0 active:scale-90 ml-2 touch-manipulation"
-                        >
-                            <X size={16} />
-                        </button>
-                    </div>
 
-                    <InstallButton />
+                        <div className="flex-1 overflow-y-auto py-6 px-4 space-y-2 scrollbar-hide">
+                            {menuItems.map(item => (
+                                <button
+                                    key={item.id}
+                                    onClick={() => handleNavigation(item.id)}
+                                    className={`w-full flex items-center gap-4 p-4 rounded-xl transition-all duration-200 touch-manipulation ${
+                                        currentView === item.id
+                                        ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold shadow-sm'
+                                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium'
+                                    }`}
+                                >
+                                    <item.icon size={22} className={currentView === item.id ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400"} />
+                                    <span className="text base">{item.label}</span>
+                                    {dir === 'rtl' ? <ChevronRight size={18} className="mr-auto opacity-30 rotate-180" /> : <ChevronRight size={18} className="ml-auto opacity-30" />}
+                                </button>
+                            ))}
 
-                    <UserProfileSection />
+                            <button onClick={handleReportClick} className="w-full flex items-center gap-4 p-4 rounded-xl transition-all duration-200 text-slate-600 dark:text-slate-300 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-600 font-medium mt-4 border-t border-slate-100 dark:border-slate-800 touch-manipulation">
+                                <Flag size={22} className="text-slate-400" />
+                                <span className="text-base">{t('report_issue')}</span>
+                            </button>
+
+                            <button onClick={() => handleNavigation('about')} className={`w-full flex items-center gap-4 p-4 rounded-xl transition-all duration-200 touch-manipulation ${currentView === 'about' ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium'}`}>
+                                <Info size={22} className={currentView === 'about' ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400"} />
+                                <span className="text-base">{t('menu_about')}</span>
+                                {dir === 'rtl' ? <ChevronRight size={18} className="mr-auto opacity-30 rotate-180" /> : <ChevronRight size={18} className="ml-auto opacity-30" />}
+                            </button>
+                        </div>
+
+                        <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shrink-0">
+                            <button onClick={signOut} className="w-full flex items-center justify-center gap-2 p-3.5 text-red-600 dark:text-red-400 font-black bg-red-50 dark:bg-red-900/10 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-xl transition-all active:scale-95 touch-manipulation">
+                                <LogOut size={20} />
+                                <span>{t('logout')}</span>
+                            </button>
+                            <div className="text-center mt-4 space-y-1">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">v1.9.0 • Yokneam-Binyamina</p>
+                                <p className="text-[9px] font-bold text-slate-400 opacity-60">© All Rights Reserved to Sahar Mishan</p>
+                            </div>
+                        </div>
+                    </motion.div>
                 </div>
-
-                <div className="flex-1 overflow-y-auto py-6 px-4 space-y-2 scrollbar-hide">
-                    {menuItems.map(item => (
-                        <button
-                            key={item.id}
-                            onClick={() => handleNavigation(item.id)}
-                            className={`w-full flex items-center gap-4 p-4 rounded-xl transition-all duration-200 touch-manipulation ${
-                                currentView === item.id
-                                ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold shadow-sm'
-                                : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium'
-                            }`}
-                        >
-                            <item.icon size={22} className={currentView === item.id ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400"} />
-                            <span className="text base">{item.label}</span>
-                            {dir === 'rtl' ? <ChevronRight size={18} className="mr-auto opacity-30 rotate-180" /> : <ChevronRight size={18} className="ml-auto opacity-30" />}
-                        </button>
-                    ))}
-
-                    <button onClick={handleReportClick} className="w-full flex items-center gap-4 p-4 rounded-xl transition-all duration-200 text-slate-600 dark:text-slate-300 hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:text-amber-600 font-medium mt-4 border-t border-slate-100 dark:border-slate-800 touch-manipulation">
-                        <Flag size={22} className="text-slate-400" />
-                        <span className="text-base">{t('report_issue')}</span>
-                    </button>
-
-                    <button onClick={() => handleNavigation('about')} className={`w-full flex items-center gap-4 p-4 rounded-xl transition-all duration-200 touch-manipulation ${currentView === 'about' ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium'}`}>
-                        <Info size={22} className={currentView === 'about' ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400"} />
-                        <span className="text-base">{t('menu_about')}</span>
-                        {dir === 'rtl' ? <ChevronRight size={18} className="mr-auto opacity-30 rotate-180" /> : <ChevronRight size={18} className="ml-auto opacity-30" />}
-                    </button>
-                </div>
-
-                <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 shrink-0">
-                    <button onClick={signOut} className="w-full flex items-center justify-center gap-2 p-3.5 text-red-600 dark:text-red-400 font-black bg-red-50 dark:bg-red-900/10 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-xl transition-all active:scale-95 touch-manipulation">
-                        <LogOut size={20} />
-                        <span>{t('logout')}</span>
-                    </button>
-                    <div className="text-center mt-4 space-y-1">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">v1.9.0 • Yokneam-Binyamina</p>
-                        <p className="text-[9px] font-bold text-slate-400 opacity-60">© All Rights Reserved to Sahar Mishan</p>
-                    </div>
-                </div>
-            </div>
-        </div>
+            )}
+        </AnimatePresence>
     );
 };
 

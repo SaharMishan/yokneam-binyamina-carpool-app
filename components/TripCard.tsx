@@ -15,6 +15,7 @@ import ChatModal from './ChatModal';
 import JoinPickupModal from './JoinPickupModal';
 import InviteSelectionModal from './InviteSelectionModal';
 import Portal from './Portal';
+import { motion, AnimatePresence } from 'motion/react';
 
 // לוגו Waze המקורי
 const WazeLogo = () => (
@@ -48,7 +49,7 @@ interface TripCardProps {
 
 const TripCard: React.FC<TripCardProps> = ({ trip, onEdit, onPostTripClick }) => {
     const { user, firebaseUser } = useAuth();
-    const { t, dir, language } = useLocalization();
+    const { t, dir } = useLocalization();
     const { driverProfile, driverPhoneNumber } = useTripContact(trip);
     
     const [isDeleting, setIsDeleting] = useState(false);
@@ -128,12 +129,12 @@ const TripCard: React.FC<TripCardProps> = ({ trip, onEdit, onPostTripClick }) =>
         ? { accent: 'bg-violet-600', glow: 'shadow-violet-500/10', text: 'text-violet-600', gradient: 'from-violet-600 to-purple-500', light: 'bg-violet-50 dark:bg-violet-950/20' }
         : { accent: 'bg-indigo-600', glow: 'shadow-indigo-500/10', text: 'text-indigo-600', gradient: 'from-indigo-600 to-blue-600', light: 'bg-indigo-50 dark:bg-indigo-950/20' };
     
-    const displayName = language === 'en' ? (driverProfile?.displayNameEn || driverProfile?.displayName || trip.driverName) : (driverProfile?.displayName || trip.driverName);
+    const displayName = driverProfile?.displayName || trip.driverName;
     const displayPhoto = driverProfile?.photoURL || trip.driverPhoto;
     const departureTimeObj = trip.departureTime.toDate();
     const departureTimeStr = departureTimeObj.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', hour12: false });
     const dayAndMonthStr = `${departureTimeObj.getDate()}.${departureTimeObj.getMonth() + 1}`;
-    const dayNameStr = departureTimeObj.toLocaleDateString(language === 'he' ? 'he-IL' : 'en-US', { weekday: 'short' });
+    const dayNameStr = departureTimeObj.toLocaleDateString('he-IL', { weekday: 'short' });
     const isYokneamToBinyamina = trip.direction === Direction.YOKNEAM_TO_BINYAMINA;
     const fromCity = isYokneamToBinyamina ? t('city_yokneam') : t('city_binyamina');
     const toCity = isYokneamToBinyamina ? t('city_binyamina') : t('city_yokneam');
@@ -150,7 +151,7 @@ const TripCard: React.FC<TripCardProps> = ({ trip, onEdit, onPostTripClick }) =>
     const handleJoinRequestFromModal = async (pickupLoc: string) => {
         if (!user || isJoining || isPending || isApproved || isFull || trip.isClosed) return;
         setIsJoining(true);
-        try { await db.requestToJoinTrip(trip.id, { uid: user.uid, name: (language === 'en' && user.displayNameEn) ? user.displayNameEn : (user.displayName || t('guest')), photo: user.photoURL || '', phoneNumber: user.phoneNumber || '', status: 'pending', requestedPickupLocation: pickupLoc }); }
+        try { await db.requestToJoinTrip(trip.id, { uid: user.uid, name: user.displayName || t('guest'), photo: user.photoURL || '', phoneNumber: user.phoneNumber || '', status: 'pending', requestedPickupLocation: pickupLoc }); }
         catch (error) { alert(t('error_generic')); } finally { setIsJoining(false); }
     };
 
@@ -178,7 +179,14 @@ const TripCard: React.FC<TripCardProps> = ({ trip, onEdit, onPostTripClick }) =>
     const activePassenger = approvedPassengers.find(p => p.uid === selectedPassenger) || (approvedPassengers.length > 0 ? approvedPassengers[0] : null);
 
     return (
-        <div className={`group relative bg-white dark:bg-slate-900 rounded-[2.2rem] shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden transition-all hover:shadow-xl hover:-translate-y-1 w-full max-w-[340px] mx-auto mb-4 flex ${themeClasses.glow}`}>
+        <motion.div 
+            layout
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className={`group relative bg-white dark:bg-slate-900 rounded-[2.2rem] shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden transition-all hover:shadow-xl hover:-translate-y-1 w-full max-w-[340px] mx-auto mb-4 flex ${themeClasses.glow}`}
+        >
             <ChatModal isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} trip={trip} />
             <JoinPickupModal isOpen={showJoinModal} onClose={() => setShowJoinModal(false)} onConfirm={handleJoinRequestFromModal} />
             <InviteSelectionModal isOpen={showInviteModal} onClose={() => setShowInviteModal(false)} passengerId={trip.driverId} passengerName={trip.driverName} direction={trip.direction} onInviteSent={() => {}} onPostTripClick={() => onPostTripClick?.()} />
@@ -372,7 +380,7 @@ const TripCard: React.FC<TripCardProps> = ({ trip, onEdit, onPostTripClick }) =>
                     </div>
                 </Portal>
             )}
-        </div>
+        </motion.div>
     );
 };
 

@@ -6,12 +6,13 @@ import ForgotPasswordView from './ForgotPasswordView';
 import HeroSection from './HeroSection';
 import { useLocalization } from '../../context/LocalizationContext';
 import { Globe } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
 type AuthView = 'login' | 'register' | 'forgot-password';
 
 const AuthPage: React.FC = () => {
     const [view, setView] = useState<AuthView>('login');
-    const { dir, toggleLanguage, language } = useLocalization();
+    const { dir } = useLocalization();
 
     const renderView = () => {
         switch (view) {
@@ -25,33 +26,27 @@ const AuthPage: React.FC = () => {
         }
     };
 
-    const LanguageToggle = () => (
-        <button
-            onClick={toggleLanguage}
-            className="absolute top-6 end-6 z-50 flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/30 backdrop-blur-xl border border-white/40 shadow-lg hover:bg-white/50 transition-all group active:scale-95"
-        >
-            <Globe size={18} className="text-slate-800 dark:text-white drop-shadow-sm group-hover:rotate-12 transition-transform duration-500" />
-            <span className="text-xs font-black uppercase tracking-widest text-slate-800 dark:text-white drop-shadow-sm">
-                {language}
-            </span>
-        </button>
-    );
-
     const formSection = (
         <div className="relative flex flex-col justify-center items-center p-6 sm:p-12 h-[100dvh] overflow-hidden bg-white/80 dark:bg-slate-900/80 shadow-2xl z-20 backdrop-blur-sm">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 to-indigo-600"></div>
-            <div className="w-full max-w-[400px] relative z-10 transition-all duration-300">
-                 {/* Key added here to force animation when view switches */}
-                 <div key={view} className="animate-fade-in">
-                    {renderView()}
-                 </div>
+            <div className="w-full max-w-[400px] relative z-10">
+                 <AnimatePresence mode="wait">
+                    <motion.div 
+                        key={view}
+                        initial={{ opacity: 0, x: dir === 'rtl' ? 20 : -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: dir === 'rtl' ? -20 : 20 }}
+                        transition={{ duration: 0.3, ease: "easeInOut" }}
+                    >
+                        {renderView()}
+                    </motion.div>
+                 </AnimatePresence>
             </div>
         </div>
     );
 
     return (
         <div className="h-[100dvh] w-full relative overflow-hidden selection:bg-indigo-100 flex flex-col md:grid md:grid-cols-2">
-            <LanguageToggle />
             {dir === 'ltr' ? (
                 <>
                     {formSection}

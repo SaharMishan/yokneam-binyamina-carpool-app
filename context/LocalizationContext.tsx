@@ -3,13 +3,12 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { Translations } from '../types';
 
 type Direction = 'rtl' | 'ltr';
-type Language = 'en' | 'he';
+type Language = 'he';
 
 interface LocalizationContextType {
     language: Language;
     dir: Direction;
     t: (key: string) => string;
-    toggleLanguage: () => void;
     isDarkMode: boolean;
     toggleTheme: () => void;
 }
@@ -17,38 +16,6 @@ interface LocalizationContextType {
 const LocalizationContext = createContext<LocalizationContextType | undefined>(undefined);
 
 const translations: Translations = {
-    en: {
-        app_title: 'Carpool Yokneam-Binyamina',
-        hero_subtitle: 'The smart way to commute between Yokneam and Binyamina.',
-        install_title: 'Install App',
-        install_subtitle: 'Install the app for a better experience.',
-        confirm: 'Got it',
-        btn_select_time: 'Select Time',
-        btn_select_date: 'Select Date',
-        back_home: 'Back Home',
-        'Yokneam -> Binyamina': 'Yokneam → Binyamina',
-        'Binyamina -> Yokneam': 'Binyamina → Yokneam',
-        notif_passenger_left_title: 'Passenger Left',
-        notif_passenger_left_msg: '{name} has left your ride.',
-        pickup_modal_title: 'Where from?',
-        pickup_modal_desc: 'Please enter your pickup location for the driver.',
-        pickup_modal_placeholder: 'Example: Near the Big junction...',
-        pickup_modal_btn: 'Send Join Request',
-        offer_to_join: 'Offer to join',
-        invite_to_ride: 'Invite to your ride',
-        select_trip_to_invite: 'Select one of your rides:',
-        no_active_rides_to_invite: 'No active rides to offer',
-        passenger_busy_error: 'Passenger already booked',
-        request_status_title: 'Your Request Status',
-        share_trip: 'Share',
-        share_message_offer: 'Hi! I am driving {direction} on {date} at {time}. Join me: {link}',
-        share_message_request: 'Hi! I am looking for a ride {direction} on {date} at {time}. Anyone going? {link}',
-        remove_passenger_confirm_title: 'Remove Passenger',
-        remove_passenger_confirm_msg: 'Are you sure you want to remove {name} from the ride?',
-        confirm_remove: 'Remove',
-        notif_removed_title: 'Removed from Ride',
-        notif_removed_msg: 'The driver has removed you from the scheduled ride.'
-    },
     he: {
         app_title: 'קארפול יקנעם-בנימינה',
         hero_subtitle: 'הדרך החכמה והקהילתית להתנייד בין יקנעם לבנימינה.',
@@ -181,6 +148,17 @@ const translations: Translations = {
         admin_status_operational: 'תקין',
         admin_status_active: 'פעיל',
         admin_status_optimal: 'אופטימלי',
+        admin_search_users: 'חיפוש לפי שם, טלפון או אימייל...',
+        admin_search_trips: 'חיפוש לפי שם נהג...',
+        admin_no_reports: 'אין דיווחים פתוחים כרגע. הכל נראה תקין!',
+        admin_resolve_report: 'סמן כטופל',
+        admin_resolved: 'טופל',
+        admin_broadcast_subject: 'נושא ההודעה',
+        admin_broadcast_subject_placeholder: 'למשל: עדכון גרסה חשוב',
+        admin_broadcast_message: 'תוכן ההודעה',
+        admin_broadcast_message_placeholder: 'הזינו את תוכן ההודעה שתוצג לכל המשתמשים...',
+        admin_send_broadcast: 'שלח הודעה לכולם',
+        admin_broadcast_sent: 'ההודעה שודרה בהצלחה לכל המשתמשים!',
         status_active: 'פעיל',
         filter_status_all: 'הכל',
         filter_status_active: 'פעילות',
@@ -344,7 +322,7 @@ const translations: Translations = {
 };
 
 export const LocalizationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [language, setLanguage] = useState<Language>('he');
+    const [language] = useState<Language>('he');
     const [isDarkMode, setIsDarkMode] = useState(false);
 
     useEffect(() => {
@@ -358,13 +336,12 @@ export const LocalizationProvider: React.FC<{ children: ReactNode }> = ({ childr
         else document.documentElement.classList.remove('dark');
     }, [isDarkMode]);
 
-    const toggleLanguage = useCallback(() => setLanguage(prev => (prev === 'en' ? 'he' : 'en')), []);
     const toggleTheme = useCallback(() => setIsDarkMode(prev => !prev), []);
 
     const value = useMemo(() => {
-        const dir: Direction = language === 'he' ? 'rtl' : 'ltr';
+        const dir: Direction = 'rtl';
         const t = (key: string) => translations[language][key] || key;
-        return { language, dir, t, toggleLanguage, isDarkMode, toggleTheme };
+        return { language, dir, t, isDarkMode, toggleTheme };
     }, [language, isDarkMode]);
 
     return (
