@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4A72FF" />
+      <stop offset="100%" stop-color="#3A2E8D" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="110" fill="url(#bg)" />
+  
+  <g stroke="white" stroke-width="24" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Roof -->
+    <path d="M 176 236 L 206 166 L 306 166 L 336 236" fill="none" />
+    
+    <!-- Lower Body -->
+    <rect x="136" y="236" width="240" height="110" rx="40" fill="none" />
+    
+    <!-- Wheels -->
+    <line x1="176" y1="346" x2="176" y2="376" />
+    <line x1="336" y1="346" x2="336" y2="376" />
+    
+    <!-- Side Mirrors -->
+    <line x1="156" y1="226" x2="126" y2="196" />
+    <line x1="356" y1="226" x2="386" y2="196" />
+  </g>
+  
+  <!-- Headlights -->
+  <circle cx="186" cy="291" r="14" fill="white" />
+  <circle cx="326" cy="291" r="14" fill="white" />
+</svg>
