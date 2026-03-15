@@ -1,11 +1,13 @@
 
-const CACHE_NAME = 'carpool-v1.9.8';
+const CACHE_NAME = 'carpool-v1.9.9';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   'https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;800;900&display=swap',
-  '/logo.jpg'
+  '/logo.jpg',
+  '/icon-192.png',
+  '/icon-512.png'
 ];
 
 self.addEventListener('install', (event) => {
