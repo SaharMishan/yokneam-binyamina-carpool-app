@@ -40,7 +40,7 @@ const CoolLoader = ({ message }: { message: string }) => (
             {/* The Car */}
             <div className="relative z-10 animate-car-bounce">
                 <div className="bg-white dark:bg-slate-800 p-1 rounded-[1.8rem] shadow-2xl shadow-indigo-500/40 border-4 border-white dark:border-slate-800 overflow-hidden w-24 h-24 flex items-center justify-center">
-                    <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    <img src="/logo.svg" alt="Logo" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 </div>
             </div>
 

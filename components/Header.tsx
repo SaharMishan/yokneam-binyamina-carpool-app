@@ -107,7 +107,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onLogoClick, onNavigateToT
                     onClick={onLogoClick}
                 >
                     <div className="bg-white dark:bg-slate-800 p-0.5 rounded-xl shadow-md group-hover:rotate-6 transition-transform overflow-hidden w-10 h-10 flex items-center justify-center border border-slate-200 dark:border-slate-700">
-                        <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        <img src="/logo.svg" alt="Logo" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                     </div>
                     <h1 className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-800 to-slate-600 dark:from-white dark:to-slate-300 hidden sm:block">{t('app_title')}</h1>
                 </div>

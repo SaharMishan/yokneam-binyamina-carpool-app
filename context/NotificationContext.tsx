@@ -64,8 +64,8 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                             const title = notif.title; // Translating on display
                             const options = {
                                 body: notif.message.includes('|') ? notif.message.split('|')[1] : notif.message,
-                                icon: '/logo.jpg',
-                                badge: '/logo.jpg',
+                                icon: '/logo.svg',
+                                badge: '/logo.svg',
                                 data: { url: notif.relatedTripId ? `/?tripId=${notif.relatedTripId}` : '/' }
                             };
 

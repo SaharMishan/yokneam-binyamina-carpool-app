@@ -50,7 +50,7 @@ const ForgotPasswordView: React.FC<ForgotPasswordViewProps> = ({ onSwitchToLogin
         <div className="animate-fade-in w-full">
              <div className="mb-8 text-center">
                 <div className="w-16 h-16 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/30 group hover:scale-105 transition-transform overflow-hidden border border-slate-100 dark:border-slate-700">
-                    <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    <img src="/logo.svg" alt="Logo" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 </div>
                 <h1 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">{t('reset_your_password')}</h1>
                 <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">{t('forgot_password_subtitle')}</p>

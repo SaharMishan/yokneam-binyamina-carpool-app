@@ -25,7 +25,7 @@ const HeroSection: React.FC = () => {
                 
                 <div className="absolute z-20 animate-pop-in">
                     <div className="w-48 h-48 bg-white dark:bg-slate-800 rounded-[2rem] shadow-2xl shadow-indigo-500/40 flex items-center justify-center transform hover:scale-105 transition-transform duration-300 border-4 border-white/10 backdrop-blur-sm animate-float overflow-hidden">
-                        <img src="/logo.jpg" alt="Logo" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        <img src="/logo.svg" alt="Logo" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                     </div>
                 </div>
 
