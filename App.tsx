@@ -87,7 +87,7 @@ const AppContent = () => {
 
     // Dynamic Meta Tags for Social Sharing (WhatsApp, etc.)
     useEffect(() => {
-        const iconUrl = "/icon-192.png";
+        const iconUrl = "/logo.jpg";
         
         // Update favicon & apple-touch-icon
         const head = document.getElementsByTagName('head')[0];
