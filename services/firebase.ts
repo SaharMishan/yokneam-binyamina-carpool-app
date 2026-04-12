@@ -139,16 +139,27 @@ export const auth = {
         const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
         const isPWA = window.matchMedia('(display-mode: standalone)').matches;
 
-        // On iOS or Safari or PWA, Redirect is much more reliable than Popup
-        if (isMobile || isSafari || isPWA) {
-            console.log("Using Redirect for Auth (Mobile/Safari/PWA)");
-            // Ensure persistence is set again just before redirect
+        // On iOS PWA, Redirect is the only way as popups are blocked.
+        // On iOS Safari (browser), Popup is actually more reliable as it avoids page reloads and ITP issues.
+        if (isPWA) {
+            console.log("Using Redirect for Auth (PWA)");
             await setPersistence(authInstance, browserLocalPersistence);
             return signInWithRedirect(authInstance, googleProvider);
         }
         
-        console.log("Using Popup for Auth (Desktop)");
-        return signInWithPopup(authInstance, googleProvider);
+        // For mobile browsers (including iOS Safari), try Popup first as it's more stable for session state
+        console.log("Using Popup for Auth");
+        try {
+            return await signInWithPopup(authInstance, googleProvider);
+        } catch (error: any) {
+            // Fallback to redirect if popup is blocked
+            if (error.code === 'auth/popup-blocked' || error.code === 'auth/cancelled-popup-request') {
+                console.log("Popup blocked, falling back to Redirect");
+                await setPersistence(authInstance, browserLocalPersistence);
+                return signInWithRedirect(authInstance, googleProvider);
+            }
+            throw error;
+        }
     },
     getRedirectResult: () => getRedirectResult(authInstance),
     setPersistence: async (persistenceType: 'local' | 'session') => {
