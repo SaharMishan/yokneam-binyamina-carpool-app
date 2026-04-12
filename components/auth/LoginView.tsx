@@ -26,7 +26,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onSwitchToFor
         const cleanEmail = email.trim().toLowerCase();
         
         if (!cleanEmail || !password) {
-            setError(language === 'he' ? 'יש להזין אימייל וסיסמה' : 'Please enter email and password');
+            setError(t('error_login_required'));
             return;
         }
 
@@ -43,13 +43,11 @@ const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onSwitchToFor
             // 2. Email not found
             // 3. Account exists via Google but has no password set yet
             if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-                setError(language === 'he' 
-                    ? 'פרטי ההתחברות לא תואמים. אם נרשמת עם Google, תוכל להגדיר סיסמה ידנית על ידי לחיצה על "שכחת סיסמה".' 
-                    : 'Invalid credentials. If you signed up via Google, you can enable manual login by using "Forgot Password".');
+                setError(t('error_invalid_credentials'));
             } else if (err.code === 'auth/too-many-requests') {
-                setError(language === 'he' ? 'יותר מדי ניסיונות כושלים. החשבון ננעל זמנית.' : 'Too many attempts. Account temporary locked.');
+                setError(t('error_too_many_requests'));
             } else if (err.code === 'auth/invalid-email') {
-                setError(language === 'he' ? 'כתובת האימייל אינה תקינה' : 'Invalid email address');
+                setError(t('error_invalid_email'));
             } else {
                 setError(t('error_generic') + ` (${err.code})`);
             }
@@ -67,14 +65,18 @@ const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onSwitchToFor
             if (err.code !== 'auth/popup-closed-by-user') {
                 console.error("Google login error:", err.code);
                 
+                // Specific handling for account collision
+                if (err.code === 'auth/account-exists-with-different-credential' || err.code === 'auth/email-already-in-use') {
+                    setError(t('error_account_collision'));
+                    return;
+                }
+
                 // Specific handling for iOS PWA issues
                 const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
                 const isPWA = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
                 
                 if (isIOS && isPWA) {
-                    setError(language === 'he' 
-                        ? 'התחברות עם Google בתוך האפליקציה המותקנת באייפון מוגבלת על ידי אפל. מומלץ להתחבר דרך הדפדפן (Safari) או להשתמש באימייל וסיסמה.' 
-                        : 'Google Sign-In is restricted by Apple within installed apps on iPhone. Please sign in via Safari or use email and password.');
+                    setError(t('error_ios_pwa_google'));
                 } else {
                     setError(t('error_generic') + ` (${err.code})`);
                 }
@@ -106,16 +108,14 @@ const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onSwitchToFor
                     <div className="flex items-start gap-3">
                         <Info className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
                         <p className="text-[11px] font-medium text-indigo-800 dark:text-indigo-300 leading-relaxed">
-                            {language === 'he' 
-                                ? 'שים לב: באייפון מותקן (PWA), התחברות עם Google עלולה להיחסם על ידי אפל. אם נתקלת בבעיה, מומלץ להשתמש באימייל וסיסמה.' 
-                                : 'Note: On iPhone PWA, Google Sign-In may be restricted by Apple. Please use email and password if you face issues.'}
+                            {t('error_ios_pwa_google_hint')}
                         </p>
                     </div>
                     <button 
                         onClick={onSwitchToForgotPassword}
                         className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 underline text-start ps-8"
                     >
-                        {language === 'he' ? 'נרשמת עם גוגל? לחץ כאן להגדרת סיסמה ראשונה' : 'Signed up with Google? Click here to set a password'}
+                        {t('error_set_password_hint')}
                     </button>
                 </div>
             )}
