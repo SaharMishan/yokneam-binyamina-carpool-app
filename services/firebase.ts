@@ -137,20 +137,6 @@ export const auth = {
         firebaseCreateUserWithEmailAndPassword(authInstance, normalizeEmail(email), pass),
     sendPasswordResetEmail: (email: string) => 
         firebaseSendPasswordResetEmail(authInstance, normalizeEmail(email)),
-    signInWithApple: async () => {
-        const { OAuthProvider } = await import("firebase/auth");
-        const appleProvider = new OAuthProvider('apple.com');
-        appleProvider.addScope('email');
-        appleProvider.addScope('name');
-        
-        const isPWA = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
-        if (isPWA) {
-            localStorage.setItem('pwa_auth_active', 'true');
-            await setPersistence(authInstance, browserLocalPersistence);
-            return signInWithRedirect(authInstance, appleProvider);
-        }
-        return signInWithPopup(authInstance, appleProvider);
-    },
     signInWithGoogle: async () => {
         const isPWA = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
         

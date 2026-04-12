@@ -27,7 +27,6 @@ const translations: Translations = {
         sign_in: 'התחברות',
         or_continue_with: 'או המשיכו עם',
         login_with_google: 'התחברות עם Google',
-        login_with_apple: 'התחברות עם Apple',
         dont_have_account: 'אין לך חשבון?',
         sign_up: 'הרשמה',
         create_account: 'יצירת חשבון',
