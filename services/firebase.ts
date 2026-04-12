@@ -57,9 +57,16 @@ export const cleanEnvValue = (val: any): string => {
  * 2. Ensure VITE_FIREBASE_AUTH_DOMAIN is set to your project's .firebaseapp.com domain
  *    unless you have specifically configured a custom domain for auth.
  */
+const authDomain = cleanEnvValue(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN) || "carpool-yokneam.firebaseapp.com";
+
+// Diagnostic warning for production
+if (typeof window !== 'undefined' && (authDomain.includes('netlify.app') || authDomain.includes('vercel.app'))) {
+    console.warn("⚠️ VITE_FIREBASE_AUTH_DOMAIN is set to a hosting domain. This often breaks Google Sign-In. It should usually be 'carpool-yokneam.firebaseapp.com'");
+}
+
 const firebaseConfig = {
   apiKey: cleanEnvValue(import.meta.env.VITE_FIREBASE_API_KEY) || "AIzaSyDPMvgiA-BMTfjpns7CYsfNFrU5PWqnJGw",
-  authDomain: cleanEnvValue(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN) || "carpool-yokneam.firebaseapp.com",
+  authDomain: authDomain,
   projectId: cleanEnvValue(import.meta.env.VITE_FIREBASE_PROJECT_ID) || "carpool-yokneam",
   storageBucket: cleanEnvValue(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET) || "carpool-yokneam.firebasestorage.app",
   messagingSenderId: cleanEnvValue(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID) || "374315181940",

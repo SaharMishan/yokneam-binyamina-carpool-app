@@ -28,30 +28,35 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const syncUserProfile = async (loggedInUser: any) => {
         if (!loggedInUser) return;
-        const userDocRef = doc(dbInstance, 'users', loggedInUser.uid);
-        const userDoc = await getDoc(userDocRef);
-        
-        const isMaster = loggedInUser.email?.toLowerCase() === MASTER_EMAIL.toLowerCase();
+        try {
+            const userDocRef = doc(dbInstance, 'users', loggedInUser.uid);
+            const userDoc = await getDoc(userDocRef);
+            
+            const isMaster = loggedInUser.email?.toLowerCase() === MASTER_EMAIL.toLowerCase();
 
-        if (!userDoc.exists()) {
-            const newUserProfile: UserProfile = {
-                uid: loggedInUser.uid,
-                displayName: loggedInUser.displayName || 'Guest',
-                email: loggedInUser.email?.toLowerCase().trim() || null,
-                phoneNumber: '',
-                photoURL: loggedInUser.photoURL || '',
-                isAdmin: isMaster,
-                createdAt: serverTimestamp() as any,
-                privacySettings: { profileVisibility: 'public', notificationsEnabled: true }
-            };
-            await setDoc(userDocRef, newUserProfile);
-        } else {
-            // Update existing profile with latest info from provider if needed, but don't overwrite custom data
-            await setDoc(userDocRef, {
-                email: loggedInUser.email?.toLowerCase().trim(),
-                photoURL: loggedInUser.photoURL || userDoc.data().photoURL || '',
-                isAdmin: isMaster || userDoc.data().isAdmin
-            }, { merge: true });
+            if (!userDoc.exists()) {
+                console.log("Creating new user profile for:", loggedInUser.email);
+                const newUserProfile: UserProfile = {
+                    uid: loggedInUser.uid,
+                    displayName: loggedInUser.displayName || 'Guest',
+                    email: loggedInUser.email?.toLowerCase().trim() || null,
+                    phoneNumber: '',
+                    photoURL: loggedInUser.photoURL || '',
+                    isAdmin: isMaster,
+                    createdAt: serverTimestamp() as any,
+                    privacySettings: { profileVisibility: 'public', notificationsEnabled: true }
+                };
+                await setDoc(userDocRef, newUserProfile);
+            } else {
+                // Update existing profile with latest info from provider if needed, but don't overwrite custom data
+                await setDoc(userDocRef, {
+                    email: loggedInUser.email?.toLowerCase().trim(),
+                    photoURL: loggedInUser.photoURL || userDoc.data().photoURL || '',
+                    isAdmin: isMaster || userDoc.data().isAdmin
+                }, { merge: true });
+            }
+        } catch (error) {
+            console.error("Error syncing user profile:", error);
         }
     };
 
@@ -63,6 +68,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             try {
                 const result = await auth.getRedirectResult();
                 if (result?.user) {
+                    console.log("Redirect Sign-In Success:", result.user.email);
                     await syncUserProfile(result.user);
                 }
             } catch (error: any) {
@@ -72,6 +78,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         handleRedirect();
 
         const unsubscribeAuth = auth.onAuthStateChanged(async (currentFirebaseUser) => {
+            console.log("Auth State Changed:", currentFirebaseUser ? `User: ${currentFirebaseUser.email}` : "No user");
+            
             if (unsubscribeProfile) {
                 unsubscribeProfile();
                 unsubscribeProfile = null;
@@ -79,13 +87,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
             if (currentFirebaseUser) {
                 setFirebaseUser(currentFirebaseUser);
-                const isMaster = currentFirebaseUser.email?.toLowerCase() === MASTER_EMAIL.toLowerCase();
                 
+                // Ensure profile exists in Firestore
+                await syncUserProfile(currentFirebaseUser);
+
+                const isMaster = currentFirebaseUser.email?.toLowerCase() === MASTER_EMAIL.toLowerCase();
                 const docRef = doc(dbInstance, 'users', currentFirebaseUser.uid);
+                
                 unsubscribeProfile = onSnapshot(docRef, (docSnap) => {
                     if (docSnap.exists()) {
                         setUser({ ...docSnap.data(), uid: docSnap.id } as UserProfile);
                     } else {
+                        console.warn("User profile doc not found in Firestore, using shell.");
                         const shell: UserProfile = {
                             uid: currentFirebaseUser.uid,
                             displayName: currentFirebaseUser.displayName || 'Guest',
@@ -97,6 +110,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                         };
                         setUser(shell);
                     }
+                    setLoading(false);
+                }, (error) => {
+                    console.error("Profile Snapshot Error:", error);
+                    // Even if snapshot fails, we stop loading to avoid infinite spinner
                     setLoading(false);
                 });
             } else {
