@@ -85,6 +85,9 @@ setPersistence(authInstance, browserLocalPersistence).catch(err => {
 
 export const dbInstance = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({
+    prompt: 'select_account'
+});
 
 // Initialize Messaging conditionally (not supported in all browsers)
 export let messagingInstance: any = null;
@@ -140,9 +143,10 @@ export const auth = {
         const isPWA = window.matchMedia('(display-mode: standalone)').matches;
 
         // On iOS PWA, Redirect is the only way as popups are blocked.
-        // On iOS Safari (browser), Popup is actually more reliable as it avoids page reloads and ITP issues.
         if (isPWA) {
             console.log("Using Redirect for Auth (PWA)");
+            // Save state to handle the return from redirect
+            localStorage.setItem('pwa_auth_active', 'true');
             await setPersistence(authInstance, browserLocalPersistence);
             return signInWithRedirect(authInstance, googleProvider);
         }
@@ -164,7 +168,11 @@ export const auth = {
     getRedirectResult: () => getRedirectResult(authInstance),
     setPersistence: async (persistenceType: 'local' | 'session') => {
         const persistence = persistenceType === 'session' ? browserSessionPersistence : browserLocalPersistence;
-        return setPersistence(authInstance, persistence);
+        try {
+            await setPersistence(authInstance, persistence);
+        } catch (err) {
+            console.error("Persistence error:", err);
+        }
     },
     get currentUser() { return authInstance.currentUser; }
 };

@@ -66,10 +66,25 @@ const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onSwitchToFor
             setIsSubmitting(false);
             if (err.code !== 'auth/popup-closed-by-user') {
                 console.error("Google login error:", err.code);
-                setError(t('error_generic') + ` (${err.code})`);
+                
+                // Specific handling for iOS PWA issues
+                const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+                const isPWA = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
+                
+                if (isIOS && isPWA) {
+                    setError(language === 'he' 
+                        ? 'התחברות עם Google בתוך האפליקציה המותקנת באייפון מוגבלת על ידי אפל. מומלץ להתחבר דרך הדפדפן (Safari) או להשתמש באימייל וסיסמה.' 
+                        : 'Google Sign-In is restricted by Apple within installed apps on iPhone. Please sign in via Safari or use email and password.');
+                } else {
+                    setError(t('error_generic') + ` (${err.code})`);
+                }
             }
         }
     };
+
+    const isIOSPWA = typeof window !== 'undefined' && 
+                     /iPhone|iPad|iPod/i.test(navigator.userAgent) && 
+                     (window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone);
 
     return (
         <div className="animate-fade-in w-full max-w-sm mx-auto flex flex-col min-h-[450px]">
@@ -85,6 +100,25 @@ const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onSwitchToFor
                     {t('login_subtitle')}
                 </p>
             </div>
+
+            {isIOSPWA && (
+                <div className="mb-6 p-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 flex flex-col gap-2 animate-slide-up">
+                    <div className="flex items-start gap-3">
+                        <Info className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
+                        <p className="text-[11px] font-medium text-indigo-800 dark:text-indigo-300 leading-relaxed">
+                            {language === 'he' 
+                                ? 'שים לב: באייפון מותקן (PWA), התחברות עם Google עלולה להיחסם על ידי אפל. אם נתקלת בבעיה, מומלץ להשתמש באימייל וסיסמה.' 
+                                : 'Note: On iPhone PWA, Google Sign-In may be restricted by Apple. Please use email and password if you face issues.'}
+                        </p>
+                    </div>
+                    <button 
+                        onClick={onSwitchToForgotPassword}
+                        className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 underline text-start ps-8"
+                    >
+                        {language === 'he' ? 'נרשמת עם גוגל? לחץ כאן להגדרת סיסמה ראשונה' : 'Signed up with Google? Click here to set a password'}
+                    </button>
+                </div>
+            )}
 
             {error && (
                 <div className="mb-6 p-4 rounded-2xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 flex flex-col gap-3 animate-slide-up shadow-sm">

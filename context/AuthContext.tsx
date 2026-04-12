@@ -74,6 +74,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         // Handle redirect result for mobile Google Sign-In
         const handleRedirect = async () => {
+            const isPWAAuth = localStorage.getItem('pwa_auth_active') === 'true';
+            if (isPWAAuth) {
+                console.log("PWA Auth return detected, waiting for result...");
+                setLoading(true);
+            }
+
             try {
                 const result = await auth.getRedirectResult();
                 if (result?.user && isMounted) {
@@ -86,6 +92,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     console.warn("Detected iOS internal auth error - likely ITP related.");
                 }
             } finally {
+                localStorage.removeItem('pwa_auth_active');
                 redirectChecked = true;
                 maybeFinishLoading();
             }
