@@ -38,6 +38,8 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onLogoClick, onNavigateToT
             message = t(parts[0]).replace('{name}', parts[1]);
         } else if (notif.type === 'invite' && notif.metadata) {
             message = t('notif_invite_msg').replace('{name}', notif.metadata.driverName).replace('{direction}', t(notif.metadata.directionKey)).replace('{time}', notif.metadata.time);
+        } else if (notif.title === 'notif_new_report_title' && notif.metadata) {
+            message = t('notif_new_report_msg').replace('{userName}', notif.metadata.userName || '').replace('{reportType}', t(`report_type_${notif.metadata.reportType}`) || '');
         } else { message = t(message) || message; }
 
         const handleNotifClick = () => {

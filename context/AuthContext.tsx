@@ -58,6 +58,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     useEffect(() => {
         let unsubscribeProfile: (() => void) | null = null;
 
+        // Handle redirect result for mobile Google Sign-In
+        const handleRedirect = async () => {
+            try {
+                const result = await auth.getRedirectResult();
+                if (result?.user) {
+                    await syncUserProfile(result.user);
+                }
+            } catch (error: any) {
+                console.error("Redirect Sign-In Error:", error.code, error.message);
+            }
+        };
+        handleRedirect();
+
         const unsubscribeAuth = auth.onAuthStateChanged(async (currentFirebaseUser) => {
             if (unsubscribeProfile) {
                 unsubscribeProfile();
@@ -100,8 +113,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }, []);
 
     const signInWithGoogle = async () => {
-        const result = await auth.signInWithGoogle() as any;
-        if (result?.user) await syncUserProfile(result.user);
+        try {
+            const result = await auth.signInWithGoogle() as any;
+            if (result?.user) await syncUserProfile(result.user);
+        } catch (error: any) {
+            console.error("Google Sign-In Error:", error.code, error.message);
+            // Re-throw so the UI (LoginView) can catch it and display it in its own error section
+            throw error;
+        }
     };
 
     const signInWithEmail = async (email: string, pass: string) => {

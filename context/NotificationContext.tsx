@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
-import { db, dbInstance } from '../services/firebase';
+import { db, dbInstance, messagingInstance, cleanEnvValue } from '../services/firebase';
+import { getToken, onMessage } from 'firebase/messaging';
 import { useAuth } from './AuthContext';
 import { AppNotification } from '../types';
 import { collection, query, where, onSnapshot, doc, updateDoc, orderBy, limit } from 'firebase/firestore';
@@ -35,9 +36,38 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             return;
         }
 
-        // Request notification permission
-        if ('Notification' in window && Notification.permission !== 'granted') {
-            Notification.requestPermission();
+        // Request notification permission and get FCM token
+        if ('Notification' in window) {
+            Notification.requestPermission().then(permission => {
+                if (permission === 'granted' && messagingInstance) {
+                    // Get FCM token
+                    const vapidKey = cleanEnvValue(import.meta.env.VITE_FIREBASE_VAPID_KEY) || 'BCfWAP95lwggbKfoej-5hlzVMImChjLiEmlwC12_uWQMCMPkBrHhd702SJrJQSmz38wXtknLRBhn_Acoi0WZeLw';
+                    navigator.serviceWorker.ready.then((registration) => {
+                        getToken(messagingInstance, { vapidKey, serviceWorkerRegistration: registration })
+                            .then((currentToken) => {
+                                if (currentToken) {
+                                    db.saveDeviceToken(user.uid, currentToken).catch(console.error);
+                                }
+                            }).catch((err) => {
+                                console.error('An error occurred while retrieving token. ', err);
+                            });
+                    });
+                }
+            });
+        }
+
+        // Listen for foreground messages
+        let unsubscribeMessaging: any;
+        if (messagingInstance) {
+            unsubscribeMessaging = onMessage(messagingInstance, (payload) => {
+                console.log('Message received. ', payload);
+                // The onSnapshot listener will handle showing the notification if it's also saved to Firestore,
+                // but if we want to show it directly from FCM payload:
+                // new Notification(payload.notification?.title || 'New Notification', {
+                //     body: payload.notification?.body,
+                //     icon: '/logo.svg'
+                // });
+            });
         }
 
         const q = query(
@@ -85,7 +115,10 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             console.error("Notifications Sync Error:", error);
         });
 
-        return () => unsubscribe();
+        return () => {
+            unsubscribe();
+            if (unsubscribeMessaging) unsubscribeMessaging();
+        };
     }, [user]);
 
     useEffect(() => {

@@ -445,13 +445,79 @@ const AdminDashboard: React.FC = () => {
                                                 <p className="text-xs text-slate-400 font-bold">היסטוריית הפיתוח והשיפורים</p>
                                             </div>
                                         </div>
-                                        <span className="px-4 py-1.5 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded-full text-[10px] font-black uppercase tracking-widest border border-indigo-200 dark:border-indigo-800">v1.2.6</span>
+                                        <span className="px-4 py-1.5 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded-full text-[10px] font-black uppercase tracking-widest border border-indigo-200 dark:border-indigo-800">v1.9.0</span>
                                     </div>
                                     
                                     <div className="space-y-8 relative before:absolute before:right-[11px] before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100 dark:before:bg-slate-800">
-                                        {/* v1.2.6 */}
+                                        {/* v1.9.0 */}
                                         <div className="relative pr-10">
                                             <div className="absolute right-0 top-1 w-6 h-6 rounded-full bg-indigo-600 border-4 border-white dark:border-slate-900 z-10 shadow-md"></div>
+                                            <div className="flex flex-col gap-1 mb-2">
+                                                <span className="text-sm font-black text-slate-800 dark:text-white">גרסה 1.9.0 - התראות מנהלים ואבטחה (נוכחית)</span>
+                                                <span className="text-[10px] font-bold text-slate-400">16/03/2026</span>
+                                            </div>
+                                            <ul className="text-xs text-slate-500 dark:text-slate-400 space-y-2 list-none">
+                                                <li className="flex items-start gap-2"><Check size={14} className="text-emerald-500 mt-0.5 shrink-0" /> מערכת התראות חכמה למנהלים על כל דיווח חדש שמתקבל במערכת.</li>
+                                                <li className="flex items-start gap-2"><Check size={14} className="text-emerald-500 mt-0.5 shrink-0" /> תמיכה במשתנים דינמיים בהתראות קופצות (Toasts) להצגת פרטי המדווח וסוג הדיווח.</li>
+                                                <li className="flex items-start gap-2"><Check size={14} className="text-emerald-500 mt-0.5 shrink-0" /> שדרוג מנגנון ההרשאות למנהל ראשי (Master Admin) מבוסס אימייל מאומת.</li>
+                                            </ul>
+                                        </div>
+
+                                        {/* v1.8.0 */}
+                                        <div className="relative pr-10">
+                                            <div className="absolute right-0 top-1 w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 border-4 border-white dark:border-slate-900 z-10"></div>
+                                            <div className="flex flex-col gap-1 mb-2">
+                                                <span className="text-sm font-black text-slate-800 dark:text-white">גרסה 1.8.0 - מערכת דיווחים ומשוב</span>
+                                                <span className="text-[10px] font-bold text-slate-400">10/03/2026</span>
+                                            </div>
+                                            <ul className="text-xs text-slate-500 dark:text-slate-400 space-y-2 list-none">
+                                                <li className="flex items-start gap-2"><Check size={14} className="text-emerald-500 mt-0.5 shrink-0" /> הוספת אזור "צור קשר / דיווח" למשתמשים לדיווח על תקלות והצעות ייעול.</li>
+                                                <li className="flex items-start gap-2"><Check size={14} className="text-emerald-500 mt-0.5 shrink-0" /> פאנל ניהול דיווחים ייעודי למנהלים הכולל שינוי סטטוס (פתוח/בטיפול/סגור).</li>
+                                            </ul>
+                                        </div>
+
+                                        {/* v1.7.0 */}
+                                        <div className="relative pr-10">
+                                            <div className="absolute right-0 top-1 w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 border-4 border-white dark:border-slate-900 z-10"></div>
+                                            <div className="flex flex-col gap-1 mb-2">
+                                                <span className="text-sm font-black text-slate-800 dark:text-white">גרסה 1.7.0 - הזמנות אקטיביות לנסיעה</span>
+                                                <span className="text-[10px] font-bold text-slate-400">05/03/2026</span>
+                                            </div>
+                                            <ul className="text-xs text-slate-500 dark:text-slate-400 space-y-2 list-none">
+                                                <li className="flex items-start gap-2"><Check size={14} className="text-emerald-500 mt-0.5 shrink-0" /> פיצ'ר "הצע להצטרף": נהגים יכולים להזמין נוסעים פוטנציאליים ישירות לנסיעה שלהם.</li>
+                                                <li className="flex items-start gap-2"><Check size={14} className="text-emerald-500 mt-0.5 shrink-0" /> התראות מותאמות אישית למקבלי ההזמנה עם אפשרות אישור/דחייה מהירה.</li>
+                                            </ul>
+                                        </div>
+
+                                        {/* v1.6.0 */}
+                                        <div className="relative pr-10">
+                                            <div className="absolute right-0 top-1 w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 border-4 border-white dark:border-slate-900 z-10"></div>
+                                            <div className="flex flex-col gap-1 mb-2">
+                                                <span className="text-sm font-black text-slate-800 dark:text-white">גרסה 1.6.0 - אבטחה ופרטיות</span>
+                                                <span className="text-[10px] font-bold text-slate-400">01/03/2026</span>
+                                            </div>
+                                            <ul className="text-xs text-slate-500 dark:text-slate-400 space-y-2 list-none">
+                                                <li className="flex items-start gap-2"><Check size={14} className="text-emerald-500 mt-0.5 shrink-0" /> שדרוג מקיף לחוקי האבטחה (Firestore Security Rules) למניעת גישה לא מורשית.</li>
+                                                <li className="flex items-start gap-2"><Check size={14} className="text-emerald-500 mt-0.5 shrink-0" /> הגדרות פרטיות מתקדמות בפרופיל המשתמש (הסתרת טלפון/פרופיל).</li>
+                                            </ul>
+                                        </div>
+
+                                        {/* v1.5.0 */}
+                                        <div className="relative pr-10">
+                                            <div className="absolute right-0 top-1 w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 border-4 border-white dark:border-slate-900 z-10"></div>
+                                            <div className="flex flex-col gap-1 mb-2">
+                                                <span className="text-sm font-black text-slate-800 dark:text-white">גרסה 1.5.0 - נקודות איסוף וסטטיסטיקות</span>
+                                                <span className="text-[10px] font-bold text-slate-400">28/02/2026</span>
+                                            </div>
+                                            <ul className="text-xs text-slate-500 dark:text-slate-400 space-y-2 list-none">
+                                                <li className="flex items-start gap-2"><Check size={14} className="text-emerald-500 mt-0.5 shrink-0" /> הוספת חלון בחירת "נקודת איסוף מדויקת" בעת שליחת בקשת הצטרפות.</li>
+                                                <li className="flex items-start gap-2"><Check size={14} className="text-emerald-500 mt-0.5 shrink-0" /> אזור סטטיסטיקות אישי בפרופיל (כמה נסיעות נתתי / כמה נלקחו).</li>
+                                            </ul>
+                                        </div>
+
+                                        {/* v1.2.6 */}
+                                        <div className="relative pr-10">
+                                            <div className="absolute right-0 top-1 w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 border-4 border-white dark:border-slate-900 z-10"></div>
                                             <div className="flex flex-col gap-1 mb-2">
                                                 <span className="text-sm font-black text-slate-800 dark:text-white">גרסה 1.2.6 - אופטימיזציה למובייל ודיוק</span>
                                                 <span className="text-[10px] font-bold text-slate-400">24/02/2026</span>

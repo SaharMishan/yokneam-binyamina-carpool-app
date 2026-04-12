@@ -38,6 +38,11 @@ const GlobalNotifier: React.FC = () => {
                 .replace('{direction}', t(notif.metadata.directionKey))
                 .replace('{time}', notif.metadata.time);
         }
+        if (notif.title === 'notif_new_report_title' && notif.metadata) {
+            return t('notif_new_report_msg')
+                .replace('{userName}', notif.metadata.userName || '')
+                .replace('{reportType}', t(`report_type_${notif.metadata.reportType}`) || '');
+        }
         if (notif.message && notif.message.includes('|')) {
             const parts = notif.message.split('|');
             return t(parts[0]).replace('{name}', parts[1]);

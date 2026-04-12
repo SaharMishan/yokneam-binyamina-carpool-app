@@ -69,7 +69,13 @@ const PostTripSheet: React.FC<PostTripSheetProps> = ({ isOpen, onClose, tripToEd
     });
 
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const isSubmittingRef = React.useRef(false);
     const [showErrors, setShowErrors] = useState(false);
+    const [duplicateError, setDuplicateError] = useState<string | null>(null);
+
+    useEffect(() => {
+        setDuplicateError(null);
+    }, [departureTime, startDate, direction, pickupLocation, tripType]);
     
     const [isTimePickerOpen, setIsTimePickerOpen] = useState(false);
     const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
@@ -95,8 +101,10 @@ const PostTripSheet: React.FC<PostTripSheetProps> = ({ isOpen, onClose, tripToEd
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (isSubmittingRef.current) return;
         setShowErrors(true);
         if (!user || !departureTime || !startDate || !pickupLocation.trim()) return;
+        isSubmittingRef.current = true;
         setIsSubmitting(true);
         try {
             const [hours, minutes] = departureTime.split(':').map(Number);
@@ -117,10 +125,21 @@ const PostTripSheet: React.FC<PostTripSheetProps> = ({ isOpen, onClose, tripToEd
                 passengers: (tripToEdit && tripToEdit.id) ? tripToEdit.passengers : [] 
             };
             
-            if (tripToEdit && tripToEdit.id) await db.updateTrip(tripToEdit.id, tripData);
-            else await db.addTrip(tripData as any);
+            const isDuplicate = await db.checkDuplicateTrip(user.uid, tripType, direction, Timestamp.fromDate(tripDate), tripToEdit?.id);
+            if (isDuplicate) {
+                setDuplicateError(t('error_duplicate_trip'));
+                setIsSubmitting(false);
+                isSubmittingRef.current = false;
+                return;
+            }
+
+            if (tripToEdit && tripToEdit.id) {
+                await db.updateTrip(tripToEdit.id, tripData);
+            } else {
+                await db.addTrip(tripData as any);
+            }
             onClose();
-        } catch (error) { console.error(error); alert(t('error_generic')); } finally { setIsSubmitting(false); }
+        } catch (error) { console.error(error); alert(t('error_generic')); } finally { setIsSubmitting(false); isSubmittingRef.current = false; }
     };
 
     return (
@@ -210,6 +229,15 @@ const PostTripSheet: React.FC<PostTripSheetProps> = ({ isOpen, onClose, tripToEd
                                 {showErrors && !pickupLocation && (<div className="flex items-center gap-1.5 mt-1 text-red-500 animate-fade-in"><AlertCircle size={12} /><span className="text-[10px] font-bold">{t('error_location_required')}</span></div>)}
                             </div>
                         </form>
+
+                        {duplicateError && (
+                            <div className="px-6 pb-4">
+                                <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl flex items-start gap-3 text-red-600 dark:text-red-400 animate-fade-in">
+                                    <AlertCircle size={20} className="shrink-0 mt-0.5" />
+                                    <p className="text-sm font-medium leading-tight">{duplicateError}</p>
+                                </div>
+                            </div>
+                        )}
 
                         <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
                             <button type="button" onClick={handleSubmit} disabled={isSubmitting} className="w-full h-16 bg-indigo-600 text-white font-black text-lg rounded-2xl shadow-xl shadow-indigo-600/20 flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50">

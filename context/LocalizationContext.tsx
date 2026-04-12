@@ -92,6 +92,7 @@ const translations: Translations = {
         publish_trip: 'פרסם נסיעה',
         publish_request: 'פרסם בקשה',
         post_a_trip: 'הוספת נסיעה',
+        error_duplicate_trip: 'כבר פרסמת נסיעה בכיוון זה בטווח של שעה. לעדכון פרטים, אנא ערוך את הנסיעה הקיימת שלך דרך הפרופיל.',
         edit: 'עריכה',
         call: 'התקשר',
         chat_title: 'צ׳אט נסיעה',
@@ -299,6 +300,8 @@ const translations: Translations = {
         seats_full_label_request: 'מקומות דרושים',
         notif_passenger_left_title: 'נוסע עזב את הנסיעה',
         notif_passenger_left_msg: '{name} עזב/ה את הנסיעה שלך',
+        notif_new_report_title: 'דיווח חדש התקבל',
+        notif_new_report_msg: '{userName} שלח/ה דיווח חדש מסוג: {reportType}',
         
         v_title: 'ציר זמן והיסטוריית גרסאות',
         v_desc: 'כל העדכונים והשיפורים מאז הקמת האפליקציה',

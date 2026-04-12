@@ -4,12 +4,16 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
+    // --- חוק אורך חיים גלובלי (Kill Switch) ---
+    function isProjectActive() {
+      return request.time < timestamp.date(2056, 1, 24);
+    }
+    
     function isSignedIn() {
       return request.auth != null;
     }
     
     // בדיקה אם המשתמש הוא אדמין (לפי המסמך שלו בדאטה בייס)
-    // הוספת בדיקת קיום המסמך למניעת שגיאות הרשאה בזמן יצירת משתמש חדש
     function isAdmin() {
       return isSignedIn() && 
              exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
@@ -22,40 +26,45 @@ service cloud.firestore {
     }
 
     match /trips/{tripId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn();
-      allow update, delete: if isMasterAdmin() || isAdmin() || (isSignedIn() && (
+      allow read: if isProjectActive() && isSignedIn();
+      // חובה לוודא שהנהג יוצר נסיעה בשם עצמו (או שמנהל יוצר)
+      allow create: if isProjectActive() && (isMasterAdmin() || isAdmin() || (isSignedIn() && request.resource.data.driverId == request.auth.uid));
+      allow update, delete: if isProjectActive() && (isMasterAdmin() || isAdmin() || (isSignedIn() && (
         resource.data.driverId == request.auth.uid || 
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['passengers', 'availableSeats'])
-      ));
+      )));
     }
 
     match /users/{userId} {
-      allow read: if isSignedIn();
-      allow write: if isMasterAdmin() || (isSignedIn() && request.auth.uid == userId);
+      allow read: if isProjectActive() && isSignedIn();
+      // משתמש יכול ליצור את עצמו
+      allow create: if isProjectActive() && (isMasterAdmin() || (isSignedIn() && request.auth.uid == userId));
+      // משתמש יכול לעדכן את עצמו, אבל אסור לו לשנות את שדה ה-isAdmin בעצמו (רק מנהל יכול)
+      allow update: if isProjectActive() && (isMasterAdmin() || isAdmin() || (isSignedIn() && request.auth.uid == userId && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin']))));
+      allow delete: if isProjectActive() && (isMasterAdmin() || isAdmin() || (isSignedIn() && request.auth.uid == userId));
     }
 
     match /notifications/{notifId} {
-      allow create: if isSignedIn();
-      allow read, update, delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isMasterAdmin() || isAdmin());
+      allow create: if isProjectActive() && isSignedIn();
+      allow read, update, delete: if isProjectActive() && (isMasterAdmin() || isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid));
     }
     
     match /system_announcements/{msgId} {
-      allow read: if isSignedIn(); 
-      allow write: if isAdmin() || isMasterAdmin();
+      allow read: if isProjectActive() && isSignedIn(); 
+      allow write: if isProjectActive() && (isAdmin() || isMasterAdmin());
     }
 
     match /reports/{reportId} {
-      allow create: if isSignedIn();
-      allow read, update, delete: if isAdmin() || isMasterAdmin();
+      allow create: if isProjectActive() && isSignedIn();
+      allow read, update, delete: if isProjectActive() && (isAdmin() || isMasterAdmin());
     }
     
     match /typing_status/{tripId} {
-      allow read, write: if isSignedIn();
+      allow read, write: if isProjectActive() && isSignedIn();
     }
     
     match /messages/{msgId} {
-      allow read, create: if isSignedIn();
+      allow read, create: if isProjectActive() && isSignedIn();
     }
   }
 }

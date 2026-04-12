@@ -1,8 +1,11 @@
 
 import { initializeApp, getApps, getApp } from "firebase/app";
+import { getMessaging, getToken, onMessage, isSupported } from "firebase/messaging";
 import { 
     getAuth, 
     signInWithPopup, 
+    signInWithRedirect,
+    getRedirectResult,
     GoogleAuthProvider, 
     signOut as firebaseSignOut,
     onAuthStateChanged as firebaseOnAuthStateChanged,
@@ -42,32 +45,26 @@ import { Trip, UserProfile, Direction, AppNotification, Passenger, Report, ChatM
 /**
  * פונקציית עזר לניקוי ערכי env ממרכאות כפולות, רווחים או תווים נסתרים (\r, \n).
  */
-const cleanEnvValue = (val: any): string => {
+export const cleanEnvValue = (val: any): string => {
     if (!val || typeof val !== 'string' || val === 'undefined' || val === 'null') return "";
     return val.replace(/["']/g, '').replace(/\s/g, '').trim();
 };
 
-const getEnvVar = (key: string, hardcoded: string): string => {
-    try {
-        if (typeof process !== 'undefined' && (process as any).env?.[key]) {
-            return cleanEnvValue((process as any).env[key]);
-        }
-        const wpEnv = (window as any).process?.env?.[key];
-        if (wpEnv) return cleanEnvValue(wpEnv);
-        const mEnv = (import.meta as any).env?.[key];
-        if (mEnv) return cleanEnvValue(mEnv);
-    } catch (e) {}
-    return hardcoded;
-};
-
+/**
+ * IMPORTANT FOR PRODUCTION (Netlify/Vercel):
+ * 1. Ensure your production domain (e.g., my-app.netlify.app) is added to 
+ *    "Authorized domains" in Firebase Console -> Authentication -> Settings.
+ * 2. Ensure VITE_FIREBASE_AUTH_DOMAIN is set to your project's .firebaseapp.com domain
+ *    unless you have specifically configured a custom domain for auth.
+ */
 const firebaseConfig = {
-  apiKey: getEnvVar('VITE_FIREBASE_API_KEY', "AIzaSyDPMvgiA-BMTfjpns7CYsfNFrU5PWqnJGw"),
-  authDomain: getEnvVar('VITE_FIREBASE_AUTH_DOMAIN', "carpool-yokneam.firebaseapp.com"),
-  projectId: getEnvVar('VITE_FIREBASE_PROJECT_ID', "carpool-yokneam"),
-  storageBucket: getEnvVar('VITE_FIREBASE_STORAGE_BUCKET', "carpool-yokneam.firebasestorage.app"),
-  messagingSenderId: getEnvVar('VITE_FIREBASE_MESSAGING_SENDER_ID', "374315181940"),
-  appId: getEnvVar('VITE_FIREBASE_APP_ID', "1:374315181940:web:e322c995e8c3b25e3eee21"),
-  measurementId: getEnvVar('VITE_FIREBASE_MEASUREMENT_ID', "G-LB4XC4NRZQ")
+  apiKey: cleanEnvValue(import.meta.env.VITE_FIREBASE_API_KEY) || "AIzaSyDPMvgiA-BMTfjpns7CYsfNFrU5PWqnJGw",
+  authDomain: cleanEnvValue(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN) || "carpool-yokneam.firebaseapp.com",
+  projectId: cleanEnvValue(import.meta.env.VITE_FIREBASE_PROJECT_ID) || "carpool-yokneam",
+  storageBucket: cleanEnvValue(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET) || "carpool-yokneam.firebasestorage.app",
+  messagingSenderId: cleanEnvValue(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID) || "374315181940",
+  appId: cleanEnvValue(import.meta.env.VITE_FIREBASE_APP_ID) || "1:374315181940:web:e322c995e8c3b25e3eee21",
+  measurementId: cleanEnvValue(import.meta.env.VITE_FIREBASE_MEASUREMENT_ID) || "G-LB4XC4NRZQ"
 };
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
@@ -75,6 +72,14 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 export const authInstance = getAuth(app);
 export const dbInstance = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
+
+// Initialize Messaging conditionally (not supported in all browsers)
+export let messagingInstance: any = null;
+isSupported().then((supported) => {
+    if (supported) {
+        messagingInstance = getMessaging(app);
+    }
+});
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
@@ -89,7 +94,14 @@ export const auth = {
         firebaseCreateUserWithEmailAndPassword(authInstance, normalizeEmail(email), pass),
     sendPasswordResetEmail: (email: string) => 
         firebaseSendPasswordResetEmail(authInstance, normalizeEmail(email)),
-    signInWithGoogle: () => signInWithPopup(authInstance, googleProvider),
+    signInWithGoogle: () => {
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        if (isMobile) {
+            return signInWithRedirect(authInstance, googleProvider);
+        }
+        return signInWithPopup(authInstance, googleProvider);
+    },
+    getRedirectResult: () => getRedirectResult(authInstance),
     setPersistence: async (persistenceType: 'local' | 'session') => {
         const persistence = persistenceType === 'session' ? browserSessionPersistence : browserLocalPersistence;
         return setPersistence(authInstance, persistence);
@@ -118,6 +130,11 @@ export const db = {
     updateUserProfile: async (uid: string, data: Partial<UserProfile>): Promise<void> => {
         await updateDoc(doc(dbInstance, 'users', uid), data);
     },
+    saveDeviceToken: async (uid: string, token: string): Promise<void> => {
+        await updateDoc(doc(dbInstance, 'users', uid), {
+            fcmTokens: arrayUnion(token)
+        });
+    },
     deleteUserProfile: async (uid: string): Promise<void> => {
         await deleteDoc(doc(dbInstance, 'users', uid));
     },
@@ -125,6 +142,35 @@ export const db = {
         const docRef = doc(dbInstance, 'trips', tripId);
         const docSnap = await getDoc(docRef);
         return docSnap.exists() ? ({ id: docSnap.id, ...docSnap.data() } as Trip) : null;
+    },
+    checkDuplicateTrip: async (driverId: string, type: string, direction: Direction, departureTime: Timestamp, excludeTripId?: string): Promise<boolean> => {
+        const q = query(
+            collection(dbInstance, 'trips'),
+            where('driverId', '==', driverId),
+            where('type', '==', type)
+        );
+        const snap = await getDocs(q);
+        const newTime = departureTime.toMillis();
+        for (const doc of snap.docs) {
+            if (excludeTripId && doc.id === excludeTripId) continue;
+            const data = doc.data();
+            if (data.direction === direction) {
+                let existingTime = 0;
+                if (data.departureTime) {
+                    if (typeof data.departureTime.toMillis === 'function') {
+                        existingTime = data.departureTime.toMillis();
+                    } else if (typeof data.departureTime.getTime === 'function') {
+                        existingTime = data.departureTime.getTime();
+                    } else if (data.departureTime.seconds) {
+                        existingTime = data.departureTime.seconds * 1000;
+                    }
+                }
+                if (existingTime && Math.abs(existingTime - newTime) <= 3600000) {
+                    return true;
+                }
+            }
+        }
+        return false;
     },
     addTrip: async (tripData: Omit<Trip, 'id'>): Promise<void> => {
         await addDoc(collection(dbInstance, 'trips'), {
@@ -360,6 +406,35 @@ export const db = {
     },
     submitReport: async (reportData: Omit<Report, 'id' | 'status' | 'createdAt'>): Promise<void> => {
         await addDoc(collection(dbInstance, 'reports'), { ...reportData, status: 'open', createdAt: serverTimestamp() });
+        
+        // Notify all admins
+        const adminsQuery = query(collection(dbInstance, 'users'), where('isAdmin', '==', true));
+        const adminsSnap = await getDocs(adminsQuery);
+        
+        const masterQuery = query(collection(dbInstance, 'users'), where('email', '==', 'saharmish93@gmail.com'));
+        const masterSnap = await getDocs(masterQuery);
+        
+        const adminIds = new Set<string>();
+        adminsSnap.forEach(doc => adminIds.add(doc.id));
+        masterSnap.forEach(doc => adminIds.add(doc.id));
+        
+        const batch = writeBatch(dbInstance);
+        adminIds.forEach(adminId => {
+            const notifRef = doc(collection(dbInstance, 'notifications'));
+            batch.set(notifRef, {
+                userId: adminId,
+                type: 'info',
+                title: 'notif_new_report_title',
+                message: 'notif_new_report_msg',
+                metadata: {
+                    userName: reportData.userName,
+                    reportType: reportData.type
+                },
+                isRead: false,
+                createdAt: serverTimestamp()
+            });
+        });
+        await batch.commit();
     },
     getUserStats: async (uid: string): Promise<{ given: number, taken: number }> => {
         const q = query(collection(dbInstance, 'trips'));
