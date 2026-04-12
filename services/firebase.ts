@@ -137,29 +137,39 @@ export const auth = {
         firebaseCreateUserWithEmailAndPassword(authInstance, normalizeEmail(email), pass),
     sendPasswordResetEmail: (email: string) => 
         firebaseSendPasswordResetEmail(authInstance, normalizeEmail(email)),
-    signInWithGoogle: async () => {
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-        const isPWA = window.matchMedia('(display-mode: standalone)').matches;
-
-        // On iOS PWA, Redirect is the only way as popups are blocked.
+    signInWithApple: async () => {
+        const { OAuthProvider } = await import("firebase/auth");
+        const appleProvider = new OAuthProvider('apple.com');
+        appleProvider.addScope('email');
+        appleProvider.addScope('name');
+        
+        const isPWA = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
         if (isPWA) {
-            console.log("Using Redirect for Auth (PWA)");
-            // Save state to handle the return from redirect
             localStorage.setItem('pwa_auth_active', 'true');
             await setPersistence(authInstance, browserLocalPersistence);
+            return signInWithRedirect(authInstance, appleProvider);
+        }
+        return signInWithPopup(authInstance, appleProvider);
+    },
+    signInWithGoogle: async () => {
+        const isPWA = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
+        
+        console.log("Initiating Google Sign-In, PWA mode:", isPWA);
+
+        // Set persistence to local to ensure session survives redirect
+        await setPersistence(authInstance, browserLocalPersistence);
+
+        if (isPWA) {
+            localStorage.setItem('pwa_auth_active', 'true');
             return signInWithRedirect(authInstance, googleProvider);
         }
         
-        // For mobile browsers (including iOS Safari), try Popup first as it's more stable for session state
-        console.log("Using Popup for Auth");
         try {
             return await signInWithPopup(authInstance, googleProvider);
         } catch (error: any) {
-            // Fallback to redirect if popup is blocked
             if (error.code === 'auth/popup-blocked' || error.code === 'auth/cancelled-popup-request') {
                 console.log("Popup blocked, falling back to Redirect");
-                await setPersistence(authInstance, browserLocalPersistence);
+                localStorage.setItem('pwa_auth_active', 'true');
                 return signInWithRedirect(authInstance, googleProvider);
             }
             throw error;

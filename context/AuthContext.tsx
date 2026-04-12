@@ -9,6 +9,7 @@ interface AuthContextType {
     firebaseUser: any | null; 
     loading: boolean;
     signInWithGoogle: () => Promise<void>;
+    signInWithApple: () => Promise<void>;
     signOut: () => Promise<void>;
     completeUserProfile: (phoneNumber: string, fullName?: string) => Promise<void>;
     updateProfile: (data: Partial<UserProfile>) => Promise<void>;
@@ -164,6 +165,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     };
 
+    const signInWithApple = async () => {
+        try {
+            const result = await auth.signInWithApple() as any;
+            if (result?.user) await syncUserProfile(result.user);
+        } catch (error: any) {
+            console.error("Apple Sign-In Error:", error.code, error.message);
+            throw error;
+        }
+    };
+
     const signInWithEmail = async (email: string, pass: string) => {
         const cleanEmail = email.toLowerCase().trim();
         await auth.signInWithEmailAndPassword(cleanEmail, pass);
@@ -212,7 +223,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setLoading(false);
     };
 
-    const value = { user, firebaseUser, loading, signInWithGoogle, signOut, completeUserProfile, updateProfile, signInWithEmail, registerWithEmail, sendPasswordReset };
+    const value = { user, firebaseUser, loading, signInWithGoogle, signInWithApple, signOut, completeUserProfile, updateProfile, signInWithEmail, registerWithEmail, sendPasswordReset };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

@@ -12,7 +12,7 @@ interface LoginViewProps {
 
 const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
     const { t, language } = useLocalization();
-    const { signInWithEmail, signInWithGoogle } = useAuth();
+    const { signInWithEmail, signInWithGoogle, signInWithApple } = useAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [rememberMe, setRememberMe] = useState(true); 
@@ -80,6 +80,21 @@ const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onSwitchToFor
                 } else {
                     setError(t('error_generic') + ` (${err.code})`);
                 }
+            }
+        }
+    };
+
+    const handleAppleLogin = async () => {
+        setError(null);
+        setIsSubmitting(true);
+        try {
+            await authService.setPersistence(rememberMe ? 'local' : 'session');
+            await signInWithApple();
+        } catch (err: any) {
+            setIsSubmitting(false);
+            if (err.code !== 'auth/popup-closed-by-user') {
+                console.error("Apple login error:", err.code);
+                setError(t('error_generic') + ` (${err.code})`);
             }
         }
     };
@@ -199,16 +214,34 @@ const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onSwitchToFor
                 </button>
             </form>
             
-            <div className="mt-8 flex flex-col gap-3">
-                <div className="relative flex items-center justify-center mb-2">
+            <div className="mt-8 flex flex-col gap-4">
+                <div className="relative flex items-center justify-center mb-1">
                     <div className="absolute inset-x-0 h-px bg-slate-200 dark:bg-slate-700"></div>
                     <span className="relative bg-white dark:bg-slate-900 px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('or_continue_with')}</span>
                 </div>
 
-                <button onClick={handleGoogleLogin} disabled={isSubmitting} className="w-full h-14 flex items-center justify-center gap-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all text-slate-700 dark:text-slate-200 font-black text-sm shadow-sm active:scale-[0.98]">
-                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5"/>
-                    <span>{t('login_with_google')}</span>
-                </button>
+                <div className="flex flex-col gap-3">
+                    <button 
+                        onClick={handleGoogleLogin} 
+                        disabled={isSubmitting} 
+                        className="w-full h-14 flex items-center justify-center gap-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all text-slate-700 dark:text-slate-200 font-black text-sm shadow-sm active:scale-[0.98] animate-slide-up"
+                    >
+                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5"/>
+                        <span>{t('login_with_google')}</span>
+                    </button>
+
+                    <button 
+                        onClick={handleAppleLogin} 
+                        disabled={isSubmitting} 
+                        className="w-full h-14 flex items-center justify-center gap-3 bg-black text-white border border-black rounded-xl hover:bg-slate-900 transition-all font-black text-sm shadow-sm active:scale-[0.98] animate-slide-up"
+                        style={{ animationDelay: '100ms' }}
+                    >
+                        <svg className="w-5 h-5 fill-current" viewBox="0 0 384 512">
+                            <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/>
+                        </svg>
+                        <span>{t('login_with_apple')}</span>
+                    </button>
+                </div>
             </div>
             
             <p className="text-center text-sm font-medium text-slate-500 dark:text-slate-400 mt-8">
