@@ -77,16 +77,49 @@ const firebaseConfig = {
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
 export const authInstance = getAuth(app);
+
+// Force local persistence immediately to help iOS/Safari/PWA
+setPersistence(authInstance, browserLocalPersistence).catch(err => {
+    console.error("Failed to set auth persistence:", err);
+});
+
 export const dbInstance = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
 
 // Initialize Messaging conditionally (not supported in all browsers)
 export let messagingInstance: any = null;
-isSupported().then((supported) => {
-    if (supported) {
-        messagingInstance = getMessaging(app);
+
+const initMessaging = async () => {
+    // Messaging is only for browser environments with ServiceWorker support
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
+        return;
     }
-});
+
+    try {
+        // Check if messaging is supported in this browser
+        const supported = await isSupported().catch(() => false);
+        if (supported) {
+            messagingInstance = getMessaging(app);
+            // Only log in development or as a silent info
+            if (import.meta.env.DEV) {
+                console.log("Firebase Messaging initialized");
+            }
+        }
+    } catch (err: any) {
+        // Completely silent for expected "not available" errors in production/preview
+        const msg = err?.message || "";
+        const isExpectedError = msg.includes('messaging is not available') || 
+                               msg.includes('Service messaging is not available') ||
+                               err?.code === 'messaging/unsupported-browser';
+        
+        if (!isExpectedError) {
+            console.error("Firebase Messaging initialization failed:", err);
+        }
+        messagingInstance = null;
+    }
+};
+
+initMessaging();
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
@@ -101,11 +134,20 @@ export const auth = {
         firebaseCreateUserWithEmailAndPassword(authInstance, normalizeEmail(email), pass),
     sendPasswordResetEmail: (email: string) => 
         firebaseSendPasswordResetEmail(authInstance, normalizeEmail(email)),
-    signInWithGoogle: () => {
+    signInWithGoogle: async () => {
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        if (isMobile) {
+        const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+        const isPWA = window.matchMedia('(display-mode: standalone)').matches;
+
+        // On iOS or Safari or PWA, Redirect is much more reliable than Popup
+        if (isMobile || isSafari || isPWA) {
+            console.log("Using Redirect for Auth (Mobile/Safari/PWA)");
+            // Ensure persistence is set again just before redirect
+            await setPersistence(authInstance, browserLocalPersistence);
             return signInWithRedirect(authInstance, googleProvider);
         }
+        
+        console.log("Using Popup for Auth (Desktop)");
         return signInWithPopup(authInstance, googleProvider);
     },
     getRedirectResult: () => getRedirectResult(authInstance),

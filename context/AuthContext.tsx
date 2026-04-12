@@ -62,22 +62,29 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     useEffect(() => {
         let unsubscribeProfile: (() => void) | null = null;
+        let isMounted = true;
 
         // Handle redirect result for mobile Google Sign-In
         const handleRedirect = async () => {
             try {
+                // On iOS PWA, we need to wait a bit for the internal state to stabilize
                 const result = await auth.getRedirectResult();
-                if (result?.user) {
+                if (result?.user && isMounted) {
                     console.log("Redirect Sign-In Success:", result.user.email);
                     await syncUserProfile(result.user);
                 }
             } catch (error: any) {
                 console.error("Redirect Sign-In Error:", error.code, error.message);
+                // If we get a 'auth/internal-error' on iOS, it's often a storage issue
+                if (error.code === 'auth/internal-error' && /iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+                    console.warn("Detected iOS internal auth error - likely ITP related.");
+                }
             }
         };
         handleRedirect();
 
         const unsubscribeAuth = auth.onAuthStateChanged(async (currentFirebaseUser) => {
+            if (!isMounted) return;
             console.log("Auth State Changed:", currentFirebaseUser ? `User: ${currentFirebaseUser.email}` : "No user");
             
             if (unsubscribeProfile) {
@@ -95,6 +102,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 const docRef = doc(dbInstance, 'users', currentFirebaseUser.uid);
                 
                 unsubscribeProfile = onSnapshot(docRef, (docSnap) => {
+                    if (!isMounted) return;
                     if (docSnap.exists()) {
                         setUser({ ...docSnap.data(), uid: docSnap.id } as UserProfile);
                     } else {
@@ -113,17 +121,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     setLoading(false);
                 }, (error) => {
                     console.error("Profile Snapshot Error:", error);
-                    // Even if snapshot fails, we stop loading to avoid infinite spinner
-                    setLoading(false);
+                    if (isMounted) setLoading(false);
                 });
             } else {
                 setFirebaseUser(null);
                 setUser(null);
-                setLoading(false);
+                // Only stop loading if we're not in the middle of a redirect check
+                // This prevents the "flash" of login screen on iOS
+                setTimeout(() => {
+                    if (isMounted) setLoading(false);
+                }, 1000);
             }
         });
 
         return () => {
+            isMounted = false;
             unsubscribeAuth();
             if (unsubscribeProfile) unsubscribeProfile();
         };

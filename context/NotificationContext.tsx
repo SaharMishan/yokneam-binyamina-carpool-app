@@ -37,22 +37,39 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         }
 
         // Request notification permission and get FCM token
-        if ('Notification' in window) {
+        if ('Notification' in window && typeof Notification.requestPermission === 'function') {
             Notification.requestPermission().then(permission => {
                 if (permission === 'granted' && messagingInstance) {
                     // Get FCM token
                     const vapidKey = cleanEnvValue(import.meta.env.VITE_FIREBASE_VAPID_KEY) || 'BCfWAP95lwggbKfoej-5hlzVMImChjLiEmlwC12_uWQMCMPkBrHhd702SJrJQSmz38wXtknLRBhn_Acoi0WZeLw';
-                    navigator.serviceWorker.ready.then((registration) => {
-                        getToken(messagingInstance, { vapidKey, serviceWorkerRegistration: registration })
-                            .then((currentToken) => {
-                                if (currentToken) {
-                                    db.saveDeviceToken(user.uid, currentToken).catch(console.error);
-                                }
-                            }).catch((err) => {
-                                console.error('An error occurred while retrieving token. ', err);
-                            });
-                    });
+                    
+                    if (navigator.serviceWorker) {
+                        navigator.serviceWorker.ready.then((registration) => {
+                            if (!messagingInstance) return;
+                            
+                            getToken(messagingInstance, { vapidKey, serviceWorkerRegistration: registration })
+                                .then((currentToken) => {
+                                    if (currentToken) {
+                                        db.saveDeviceToken(user.uid, currentToken).catch(console.error);
+                                    }
+                                }).catch((err) => {
+                                    const errMsg = err?.message || "";
+                                    const isExpectedError = err.code === 'messaging/unsupported-browser' || 
+                                                           errMsg.includes('messaging is not available') || 
+                                                           errMsg.includes('Service messaging is not available') ||
+                                                           errMsg.includes('permission-denied');
+                                    
+                                    if (!isExpectedError) {
+                                        console.error('An error occurred while retrieving token. ', err);
+                                    }
+                                });
+                        }).catch(err => {
+                            console.warn('Service worker not ready for messaging:', err);
+                        });
+                    }
                 }
+            }).catch(err => {
+                console.warn('Notification permission request failed:', err);
             });
         }
 
