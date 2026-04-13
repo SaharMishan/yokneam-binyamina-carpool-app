@@ -81,6 +81,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             }
 
             try {
+                // This is the core fix: catch the result of the redirect
                 const result = await auth.getRedirectResult();
                 if (result?.user && isMounted) {
                     console.log("Redirect Sign-In Success:", result.user.email);
@@ -88,8 +89,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 }
             } catch (error: any) {
                 console.error("Redirect Sign-In Error:", error.code, error.message);
+                // If ITP/Safari blocks the cookie, we might get an internal error
                 if (error.code === 'auth/internal-error' && /iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-                    console.warn("Detected iOS internal auth error - likely ITP related.");
+                    console.warn("Detected iOS internal auth error - likely ITP related. Custom Auth Domain is required.");
                 }
             } finally {
                 localStorage.removeItem('pwa_auth_active');

@@ -61,7 +61,7 @@ const authDomain = cleanEnvValue(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN) || "
 
 // Diagnostic warning for production
 if (typeof window !== 'undefined' && (authDomain.includes('netlify.app') || authDomain.includes('vercel.app'))) {
-    console.warn("⚠️ VITE_FIREBASE_AUTH_DOMAIN is set to a hosting domain. This often breaks Google Sign-In. It should usually be 'carpool-yokneam.firebaseapp.com'");
+    console.warn("⚠️ VITE_FIREBASE_AUTH_DOMAIN is set to a hosting domain. This often breaks Google Sign-In. It should usually be 'carpool-yokneam.firebaseapp.com' or a custom auth domain like 'auth.yourdomain.com'");
 }
 
 const firebaseConfig = {
@@ -78,7 +78,8 @@ const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
 export const authInstance = getAuth(app);
 
-// Force local persistence immediately to help iOS/Safari/PWA
+// CRITICAL: Force local persistence immediately to help iOS/Safari/PWA
+// This ensures the session is saved in localStorage and survives the redirect flow
 setPersistence(authInstance, browserLocalPersistence).catch(err => {
     console.error("Failed to set auth persistence:", err);
 });
