@@ -17,9 +17,9 @@ service cloud.firestore {
     // Check if the user is an admin
     function isAdmin() {
       return isAuthenticated() && (
+        (request.auth.token.email == 'saharmish93@gmail.com') ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true) ||
-        (request.auth.token.email == 'saharmish93@gmail.com' && request.auth.token.email_verified == true)
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true)
       );
     }
 
@@ -27,11 +27,9 @@ service cloud.firestore {
     // Domain Validators
     // ===============================================================
     function isValidUser(data) {
-      return data.keys().hasAll(['uid', 'displayName']) &&
-             data.uid is string &&
+      return data.uid is string &&
              data.displayName is string &&
-             data.displayName.size() > 0 &&
-             data.displayName.size() < 100;
+             data.displayName.size() > 0;
     }
 
     // ===============================================================
@@ -40,7 +38,7 @@ service cloud.firestore {
 
     match /users/{userId} {
       // Profiles are readable by any authenticated user for trip details
-      allow read: if isAuthenticated();
+      allow get, list: if isAuthenticated();
       
       // Allow creation of user profile by the owner
       // We allow setting isAdmin ONLY if the user is an admin already (master bootstrap)

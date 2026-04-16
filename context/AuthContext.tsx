@@ -127,25 +127,48 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 const docRef = doc(dbInstance, 'users', currentFirebaseUser.uid);
                 if (unsubscribeProfile) unsubscribeProfile();
                 
-                unsubscribeProfile = onSnapshot(docRef, (docSnap) => {
-                    if (docSnap.exists() && isMounted.current) {
-                        setUser({ ...docSnap.data(), uid: docSnap.id } as UserProfile);
-                    } else if (isMounted.current) {
-                        const isMaster = currentFirebaseUser.email?.toLowerCase() === MASTER_EMAIL.toLowerCase();
-                        const shell: UserProfile = {
-                            uid: currentFirebaseUser.uid,
-                            displayName: currentFirebaseUser.displayName || 'Guest',
-                            email: currentFirebaseUser.email?.toLowerCase().trim() || null,
-                            phoneNumber: '',
-                            photoURL: currentFirebaseUser.photoURL || '',
-                            isAdmin: isMaster, 
-                            privacySettings: { profileVisibility: 'public', notificationsEnabled: true }
-                        };
-                        setUser(shell);
-                    }
-                }, (error) => {
-                    console.error("AuthContext: Profile Snapshot Error", error);
-                });
+                const startSnapshot = (retryCount = 0) => {
+                    unsubscribeProfile = onSnapshot(docRef, (docSnap) => {
+                        if (docSnap.exists() && isMounted.current) {
+                            setUser({ ...docSnap.data(), uid: docSnap.id } as UserProfile);
+                        } else if (isMounted.current) {
+                            const isMaster = currentFirebaseUser.email?.toLowerCase() === MASTER_EMAIL.toLowerCase();
+                            const shell: UserProfile = {
+                                uid: currentFirebaseUser.uid,
+                                displayName: currentFirebaseUser.displayName || 'Guest',
+                                email: currentFirebaseUser.email?.toLowerCase().trim() || null,
+                                phoneNumber: '',
+                                photoURL: currentFirebaseUser.photoURL || '',
+                                isAdmin: isMaster, 
+                                privacySettings: { profileVisibility: 'public', notificationsEnabled: true }
+                            };
+                            setUser(shell);
+                        }
+                    }, (error) => {
+                        console.error(`🚀 AuthContext: Profile Snapshot Error (retry: ${retryCount}):`, error.message);
+                        
+                        // If permission error during initial auth propagation, retry once after a small delay
+                        if ((error.code === 'permission-denied' || error.message.includes('permissions')) && retryCount < 2 && isMounted.current) {
+                            console.log("🚀 AuthContext: Retrying snapshot in 1.5s...");
+                            setTimeout(() => startSnapshot(retryCount + 1), 1500);
+                        } else {
+                            // Fallback to a basic shell if everything fails, so the user isn't stuck
+                            if (isMounted.current && !user) {
+                                const shell: UserProfile = {
+                                    uid: currentFirebaseUser.uid,
+                                    displayName: currentFirebaseUser.displayName || 'User',
+                                    email: currentFirebaseUser.email || '',
+                                    phoneNumber: '',
+                                    isAdmin: currentFirebaseUser.email === MASTER_EMAIL,
+                                    privacySettings: { profileVisibility: 'public', notificationsEnabled: true }
+                                };
+                                setUser(shell);
+                            }
+                        }
+                    });
+                };
+
+                startSnapshot();
             } else {
                 setUser(null);
             }
