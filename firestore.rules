@@ -1,70 +1,96 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // --- חוק אורך חיים גלובלי (Kill Switch) ---
-    function isProjectActive() {
-      return request.time < timestamp.date(2056, 1, 24);
-    }
-    
-    function isSignedIn() {
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
       return request.auth != null;
     }
-    
-    // בדיקה אם המשתמש הוא אדמין (לפי המסמך שלו בדאטה בייס)
-    function isAdmin() {
-      return isSignedIn() && 
-             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // *** חוק הברזל של המנהל הראשי ***
-    function isMasterAdmin() {
-       return isSignedIn() && request.auth.token.email == 'saharmish93@gmail.com';
+    // Check if the user is an admin
+    function isAdmin() {
+      return isAuthenticated() && (
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true) ||
+        (request.auth.token.email == 'saharmish93@gmail.com' && request.auth.token.email_verified == true)
+      );
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'displayName']) &&
+             data.uid is string &&
+             data.displayName is string &&
+             data.displayName.size() > 0 &&
+             data.displayName.size() < 100;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      // Profiles are readable by any authenticated user for trip details
+      allow read: if isAuthenticated();
+      
+      // Allow creation of user profile by the owner
+      // We allow setting isAdmin ONLY if the user is an admin already (master bootstrap)
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) &&
+                    (request.resource.data.isAdmin == false || isAdmin());
+      
+      allow update: if (isOwner(userId) || isAdmin()) && 
+                    isValidUser(request.resource.data) &&
+                    // Only admins can change the isAdmin field or other metadata
+                    (request.resource.data.isAdmin == resource.data.isAdmin || isAdmin());
+      
+      allow delete: if isAdmin();
     }
 
     match /trips/{tripId} {
-      allow read: if isProjectActive() && isSignedIn();
-      // חובה לוודא שהנהג יוצר נסיעה בשם עצמו (או שמנהל יוצר)
-      allow create: if isProjectActive() && (isMasterAdmin() || isAdmin() || (isSignedIn() && request.resource.data.driverId == request.auth.uid));
-      allow update, delete: if isProjectActive() && (isMasterAdmin() || isAdmin() || (isSignedIn() && (
+      allow read: if isAuthenticated();
+      
+      allow create: if isAuthenticated() && 
+                    (request.resource.data.driverId == request.auth.uid || isAdmin());
+      
+      allow update: if isAuthenticated() && (
         resource.data.driverId == request.auth.uid || 
+        isAdmin() ||
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['passengers', 'availableSeats'])
-      )));
-    }
-
-    match /users/{userId} {
-      allow read: if isProjectActive() && isSignedIn();
-      // משתמש יכול ליצור את עצמו
-      allow create: if isProjectActive() && (isMasterAdmin() || (isSignedIn() && request.auth.uid == userId));
-      // משתמש יכול לעדכן את עצמו, אבל אסור לו לשנות את שדה ה-isAdmin בעצמו (רק מנהל יכול)
-      allow update: if isProjectActive() && (isMasterAdmin() || isAdmin() || (isSignedIn() && request.auth.uid == userId && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin']))));
-      allow delete: if isProjectActive() && (isMasterAdmin() || isAdmin() || (isSignedIn() && request.auth.uid == userId));
+      );
+      
+      allow delete: if isAuthenticated() && (resource.data.driverId == request.auth.uid || isAdmin());
     }
 
     match /notifications/{notifId} {
-      allow create: if isProjectActive() && isSignedIn();
-      allow read, update, delete: if isProjectActive() && (isMasterAdmin() || isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid));
+      allow create: if isAuthenticated();
+      allow read, update, delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
     }
     
     match /system_announcements/{msgId} {
-      allow read: if isProjectActive() && isSignedIn(); 
-      allow write: if isProjectActive() && (isAdmin() || isMasterAdmin());
+      allow read: if isAuthenticated(); 
+      allow write: if isAdmin();
     }
 
     match /reports/{reportId} {
-      allow create: if isProjectActive() && isSignedIn();
-      allow read, update, delete: if isProjectActive() && (isAdmin() || isMasterAdmin());
+      allow create: if isAuthenticated();
+      allow read, update, delete: if isAdmin();
     }
     
     match /typing_status/{tripId} {
-      allow read, write: if isProjectActive() && isSignedIn();
+      allow read, write: if isAuthenticated();
     }
     
     match /messages/{msgId} {
-      allow read, create: if isProjectActive() && isSignedIn();
+      allow read, create: if isAuthenticated();
     }
   }
 }
