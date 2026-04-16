@@ -22,12 +22,37 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const MASTER_EMAIL = 'saharmish93@gmail.com';
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+    const isMounted = React.useRef(true);
     const [user, setUser] = useState<UserProfile | null>(null);
-    const [firebaseUser, setFirebaseUser] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
+    const [firebaseUser, setFirebaseUser] = useState<any>(auth.currentUser);
+    const [isInitialized, setIsInitialized] = useState(!!auth.currentUser);
+    
+    // Safety timer: Always initialize after 3 seconds no matter what
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (!isInitialized) {
+                console.warn("🚀 AuthProvider: Force initializing after timeout");
+                setIsInitialized(true);
+            }
+        }, 3000);
+        return () => clearTimeout(timer);
+    }, [isInitialized]);
+
+    useEffect(() => {
+        console.log("🚀 AuthProvider State: user:", firebaseUser?.email || 'NULL', "isInitialized:", isInitialized);
+    }, [firebaseUser, isInitialized]);
+
+    useEffect(() => {
+        isMounted.current = true;
+        return () => { isMounted.current = false; };
+    }, []);
 
     const syncUserProfile = async (loggedInUser: any) => {
-        if (!loggedInUser) return;
+        if (!loggedInUser || !isMounted.current) return;
+        
+        // Check if user profile already loaded via snapshot, skip sync
+        if (user) return; 
+
         try {
             const userDocRef = doc(dbInstance, 'users', loggedInUser.uid);
             const userDoc = await getDoc(userDocRef);
@@ -35,7 +60,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             const isMaster = loggedInUser.email?.toLowerCase() === MASTER_EMAIL.toLowerCase();
 
             if (!userDoc.exists()) {
-                console.log("Creating new user profile for:", loggedInUser.email);
                 const newUserProfile: UserProfile = {
                     uid: loggedInUser.uid,
                     displayName: loggedInUser.displayName || 'Guest',
@@ -48,12 +72,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 };
                 await setDoc(userDocRef, newUserProfile);
             } else {
-                // Update existing profile with latest info from provider if needed, but don't overwrite custom data
-                await setDoc(userDocRef, {
-                    email: loggedInUser.email?.toLowerCase().trim(),
-                    photoURL: loggedInUser.photoURL || userDoc.data().photoURL || '',
-                    isAdmin: isMaster || userDoc.data().isAdmin
-                }, { merge: true });
+                const existingData = userDoc.data();
+                if (existingData.photoURL !== loggedInUser.photoURL || 
+                    existingData.email !== loggedInUser.email?.toLowerCase().trim() ||
+                    existingData.isAdmin !== (isMaster || existingData.isAdmin)) {
+                    
+                    await setDoc(userDocRef, {
+                        email: loggedInUser.email?.toLowerCase().trim(),
+                        photoURL: loggedInUser.photoURL || existingData.photoURL || '',
+                        isAdmin: isMaster || existingData.isAdmin
+                    }, { merge: true });
+                }
             }
         } catch (error) {
             console.error("Error syncing user profile:", error);
@@ -62,82 +91,41 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     useEffect(() => {
         let unsubscribeProfile: (() => void) | null = null;
-        let isMounted = true;
-        let redirectChecked = false;
-        let authStateReceived = false;
+        let firstAuthStateReceived = false;
 
-        const maybeFinishLoading = () => {
-            // Only finish loading if:
-            // 1. We've checked the redirect result
-            // 2. We've received the initial auth state from Firebase
-            // 3. There is no current user (if there was, onAuthStateChanged would have handled it)
-            if (isMounted && redirectChecked && authStateReceived) {
-                if (!auth.currentUser) {
-                    console.log("🏁 No user found after checks, finishing loading.");
-                    setLoading(false);
-                } else {
-                    console.log("⏳ User exists, waiting for profile sync...");
-                }
+        // 1. Handle Redirect Result in background
+        auth.getRedirectResult().then(result => {
+            if (result?.user && isMounted.current) {
+                syncUserProfile(result.user);
             }
-        };
-
-        // Handle redirect result for mobile Google Sign-In
-        const handleRedirect = async () => {
-            const isPWAAuth = localStorage.getItem('pwa_auth_active') === 'true';
-            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
-            
-            if (isPWAAuth || isStandalone) {
-                console.log("Checking for redirect result (PWA/Standalone mode)...");
-                // Don't set loading to true unless we actually have a flag, 
-                // to avoid flickering on every refresh.
-                if (isPWAAuth) setLoading(true);
+        }).catch(err => {
+            if (err.code !== 'auth/popup-closed-by-user') {
+                console.error("AuthContext: Redirect result error", err);
             }
+        });
 
-            try {
-                const result = await auth.getRedirectResult();
-                if (result?.user && isMounted) {
-                    console.log("✅ Redirect Sign-In Success:", result.user.email);
-                    await syncUserProfile(result.user);
-                } else if (isPWAAuth) {
-                    console.log("No redirect result found, but PWA flag was active.");
-                }
-            } catch (error: any) {
-                console.error("❌ Redirect Sign-In Error:", error.code, error.message);
-                if (error.code === 'auth/internal-error' && /iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-                    console.warn("Detected iOS internal auth error. This is usually fixed by the Self-Hosted Auth Domain proxy I just implemented.");
-                }
-            } finally {
-                if (isMounted) {
-                    localStorage.removeItem('pwa_auth_active');
-                    redirectChecked = true;
-                    maybeFinishLoading();
-                }
-            }
-        };
-
+        // 2. Listen for Auth State Changes
         const unsubscribeAuth = auth.onAuthStateChanged(async (currentFirebaseUser) => {
-            if (!isMounted) return;
-            console.log("Auth State Changed:", currentFirebaseUser ? `User: ${currentFirebaseUser.email}` : "No user");
+            console.log("🚀 AuthContext: onAuthStateChanged event:", currentFirebaseUser?.email || 'No user', "Mounted:", isMounted.current);
             
-            authStateReceived = true;
+            // Always set initialized to true once we hear back from Firebase
+            setIsInitialized(true); 
 
-            if (unsubscribeProfile) {
-                unsubscribeProfile();
-                unsubscribeProfile = null;
+            if (isMounted.current) {
+                setFirebaseUser(currentFirebaseUser);
             }
 
             if (currentFirebaseUser) {
-                setFirebaseUser(currentFirebaseUser);
-                await syncUserProfile(currentFirebaseUser);
+                syncUserProfile(currentFirebaseUser);
 
-                const isMaster = currentFirebaseUser.email?.toLowerCase() === MASTER_EMAIL.toLowerCase();
                 const docRef = doc(dbInstance, 'users', currentFirebaseUser.uid);
+                if (unsubscribeProfile) unsubscribeProfile();
                 
                 unsubscribeProfile = onSnapshot(docRef, (docSnap) => {
-                    if (!isMounted) return;
-                    if (docSnap.exists()) {
+                    if (docSnap.exists() && isMounted.current) {
                         setUser({ ...docSnap.data(), uid: docSnap.id } as UserProfile);
-                    } else {
+                    } else if (isMounted.current) {
+                        const isMaster = currentFirebaseUser.email?.toLowerCase() === MASTER_EMAIL.toLowerCase();
                         const shell: UserProfile = {
                             uid: currentFirebaseUser.uid,
                             displayName: currentFirebaseUser.displayName || 'Guest',
@@ -149,46 +137,61 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                         };
                         setUser(shell);
                     }
-                    setLoading(false);
                 }, (error) => {
-                    console.error("Profile Snapshot Error:", error);
-                    if (isMounted) setLoading(false);
+                    console.error("AuthContext: Profile Snapshot Error", error);
                 });
             } else {
-                setFirebaseUser(null);
                 setUser(null);
-                maybeFinishLoading();
             }
         });
 
-        handleRedirect();
-
         return () => {
-            isMounted = false;
             unsubscribeAuth();
             if (unsubscribeProfile) unsubscribeProfile();
         };
     }, []);
 
     const signInWithGoogle = async () => {
+        console.log("🚀 AuthContext: signInWithGoogle started");
         try {
             const result = await auth.signInWithGoogle() as any;
-            if (result?.user) await syncUserProfile(result.user);
+            console.log("🚀 AuthContext: signInWithGoogle success", result?.user?.email);
+            
+            if (result?.user && isMounted.current) {
+                // FORCE immediate state update to bypass any listener delays
+                setFirebaseUser(result.user);
+                setIsInitialized(true);
+                
+                // Background sync
+                syncUserProfile(result.user).catch(err => console.error("Sync error:", err));
+            }
         } catch (error: any) {
-            console.error("Google Sign-In Error:", error.code, error.message);
-            // Re-throw so the UI (LoginView) can catch it and display it in its own error section
+            console.error("🚀 AuthContext: Google Sign-In Error:", error.code, error.message);
             throw error;
         }
     };
 
     const signInWithEmail = async (email: string, pass: string) => {
+        console.log("🚀 AuthContext: signInWithEmail attempt for:", email);
         const cleanEmail = email.toLowerCase().trim();
-        await auth.signInWithEmailAndPassword(cleanEmail, pass);
+        const result = await auth.signInWithEmailAndPassword(cleanEmail, pass) as any;
+        console.log("🚀 AuthContext: signInWithEmail success", result?.user?.email);
+        
+        if (result?.user && isMounted.current) {
+            // FORCE immediate state update to ensure UI re-renders right away
+            setFirebaseUser(result.user);
+            setIsInitialized(true);
+            
+            // Background sync
+            syncUserProfile(result.user).catch(err => console.error("Sync error:", err));
+        }
     };
 
     const registerWithEmail = async (name: string, phone: string, email: string, pass: string) => {
         const cleanEmail = email.toLowerCase().trim();
-        const { user: newFirebaseUser } = await auth.createUserWithEmailAndPassword(cleanEmail, pass) as { user: any };
+        const result = await auth.createUserWithEmailAndPassword(cleanEmail, pass) as any;
+        const newFirebaseUser = result?.user;
+        
         if (newFirebaseUser) {
             const isMaster = cleanEmail === MASTER_EMAIL.toLowerCase();
             const newUserProfile: UserProfile = {
@@ -201,6 +204,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 privacySettings: { profileVisibility: 'public', notificationsEnabled: true }
             };
             await db.createUserProfile(newUserProfile);
+            
+            if (isMounted.current) {
+                // FORCE immediate state update
+                setFirebaseUser(newFirebaseUser);
+                setIsInitialized(true);
+            }
         }
     };
 
@@ -222,14 +231,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
     const signOut = async () => {
-        setLoading(true);
+        setIsInitialized(false);
         await auth.signOut();
         setFirebaseUser(null);
         setUser(null);
-        setLoading(false);
+        setIsInitialized(true);
     };
 
-    const value = { user, firebaseUser, loading, signInWithGoogle, signOut, completeUserProfile, updateProfile, signInWithEmail, registerWithEmail, sendPasswordReset };
+    const value = { 
+        user, 
+        firebaseUser, 
+        loading: !isInitialized,
+        signInWithGoogle, 
+        signOut, 
+        completeUserProfile, 
+        updateProfile, 
+        signInWithEmail, 
+        registerWithEmail, 
+        sendPasswordReset
+    };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

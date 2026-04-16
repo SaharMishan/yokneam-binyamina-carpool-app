@@ -2,6 +2,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { LocalizationProvider, useLocalization } from './context/LocalizationContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { auth as authService } from './services/firebase';
 import { NotificationProvider } from './context/NotificationContext';
 import AuthGate from './components/AuthGate';
 import Header from './components/Header';
@@ -26,41 +27,25 @@ import { motion, AnimatePresence } from 'motion/react';
 
 const CoolLoader = ({ message }: { message: string }) => (
     <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 overflow-hidden">
-        {/* Background Clouds */}
-        <div className="absolute top-20 left-0 w-full opacity-20 pointer-events-none">
-            <div className="absolute left-[10%] animate-cloud-drift" style={{ animationDelay: '0s' }}><Cloud size={40} className="text-indigo-400" /></div>
-            <div className="absolute left-[40%] animate-cloud-drift" style={{ animationDelay: '5s' }}><Cloud size={60} className="text-blue-400" /></div>
-            <div className="absolute left-[70%] animate-cloud-drift" style={{ animationDelay: '2s' }}><Cloud size={30} className="text-indigo-300" /></div>
-        </div>
-
         <div className="relative flex flex-col items-center">
             {/* Pulsing Light behind car */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-indigo-500/20 rounded-full blur-3xl animate-pulse-soft"></div>
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-indigo-500/20 rounded-full blur-2xl animate-pulse-soft"></div>
             
             {/* The Car */}
             <div className="relative z-10 animate-car-bounce">
-                <div className="bg-white dark:bg-slate-800 p-1 rounded-[1.8rem] shadow-2xl shadow-indigo-500/40 border-4 border-white dark:border-slate-800 overflow-hidden w-24 h-24 flex items-center justify-center">
+                <div className="bg-white dark:bg-slate-800 p-1 rounded-2xl shadow-xl border-2 border-white dark:border-slate-800 w-20 h-20 flex items-center justify-center">
                     <img src="/logo.svg" alt="Logo" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 </div>
             </div>
-
-            {/* Scrolling Road */}
-            <div className="mt-6 w-32 h-1 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden relative">
-                <div className="absolute inset-0 animate-road-scroll animate-road"></div>
-            </div>
-
+            
             <div className="mt-8 flex flex-col items-center gap-3">
-                <p className="text-lg font-black text-slate-800 dark:text-white tracking-tight uppercase">{message}</p>
+                <p className="text-base font-black text-slate-800 dark:text-white tracking-tight uppercase">{message}</p>
                 <div className="flex gap-1.5">
-                    <span className="w-2 h-2 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></span>
-                    <span className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></span>
-                    <span className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></span>
+                    <span className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></span>
+                    <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></span>
+                    <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></span>
                 </div>
             </div>
-        </div>
-
-        <div className="absolute bottom-10 text-center opacity-30">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">קארפול יקנעם-בנימינה</p>
         </div>
     </div>
 );
@@ -73,7 +58,7 @@ const GlobalBackground = () => (
 );
 
 const AppContent = () => {
-    const { user, loading } = useAuth();
+    const { user, loading, firebaseUser } = useAuth();
     const { dir, t } = useLocalization();
     const [isSheetOpen, setSheetOpen] = useState(false);
     const [tripToEdit, setTripToEdit] = useState<Trip | null>(null);
@@ -169,7 +154,17 @@ const AppContent = () => {
         return <CoolLoader message={isCheckingDeepLink ? 'טוען נסיעה ששותפה...' : 'מתחבר למערכת...'} />;
     }
 
-    if (!user) return <AuthGate />;
+    console.log("🚀 AppContent: Rendering decision. firebaseUser:", firebaseUser?.email || 'NULL');
+
+    // If not logged in at all
+    if (!firebaseUser) {
+        return (
+            <>
+                <GlobalBackground />
+                <AuthGate />
+            </>
+        );
+    }
 
     const renderView = () => {
         switch (currentView) {

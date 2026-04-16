@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useLocalization } from '../context/LocalizationContext';
 import { useNotifications } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
-import { db } from '../services/firebase';
+import { db, auth } from '../services/firebase';
 import { Direction } from '../types';
 import { Menu, CarFront, Moon, Sun, Globe, Bell, Trash2, Check, X, Megaphone } from 'lucide-react';
 
@@ -59,6 +59,11 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onLogoClick, onNavigateToT
         const handleAction = async (e: React.MouseEvent, action: 'approve' | 'reject') => {
             e.stopPropagation();
             if (processingNotifId) return;
+            
+            // Fallback for user profile if it's still loading
+            const currentUserUid = user?.uid || auth.currentUser?.uid;
+            if (!currentUserUid) return;
+
             setProcessingNotifId(notif.id);
             try {
                 if (notif.type === 'request' && notif.metadata?.passengerId) {
@@ -67,8 +72,14 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onLogoClick, onNavigateToT
                     markAsRead(notif.id);
                 } else if (notif.type === 'invite') {
                     if (action === 'approve') {
-                         await db.acceptTripInvitation(notif.relatedTripId, { uid: user!.uid, name: user!.displayName || 'Guest', photo: user!.photoURL || '', phoneNumber: user!.phoneNumber || '', status: 'approved' }, notif.id);
-                    } else { await db.rejectTripInvitation(notif.relatedTripId, user!.displayName || 'Guest', notif.id); }
+                         await db.acceptTripInvitation(notif.relatedTripId, { 
+                             uid: currentUserUid, 
+                             name: user?.displayName || auth.currentUser?.displayName || 'Guest', 
+                             photo: user?.photoURL || auth.currentUser?.photoURL || '', 
+                             phoneNumber: user?.phoneNumber || '', 
+                             status: 'approved' 
+                         }, notif.id);
+                    } else { await db.rejectTripInvitation(notif.relatedTripId, user?.displayName || 'Guest', notif.id); }
                 }
             } catch (err) { console.error(err); }
             finally { setProcessingNotifId(null); }

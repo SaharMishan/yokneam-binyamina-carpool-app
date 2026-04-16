@@ -60,7 +60,7 @@ export const cleanEnvValue = (val: any): string => {
 // Determine the best authDomain
 // We use the official firebaseapp.com domain as the primary authDomain.
 // This is the most compatible way and prevents 'unauthorized-domain' errors.
-const authDomain = "carpool-yokneam.firebaseapp.com";
+const authDomain = cleanEnvValue(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN) || "carpool-yokneam.firebaseapp.com";
 
 const firebaseConfig = {
   apiKey: cleanEnvValue(import.meta.env.VITE_FIREBASE_API_KEY) || "AIzaSyDPMvgiA-BMTfjpns7CYsfNFrU5PWqnJGw",
@@ -75,6 +75,11 @@ const firebaseConfig = {
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
 export const authInstance = getAuth(app);
+
+// Set persistence once at the very beginning to avoid race conditions during login
+setPersistence(authInstance, browserLocalPersistence).catch(err => {
+    console.error("🚀 Firebase: Initial persistence error:", err);
+});
 
 export const dbInstance = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
@@ -131,14 +136,25 @@ export const auth = {
     sendPasswordResetEmail: (email: string) => 
         firebaseSendPasswordResetEmail(authInstance, normalizeEmail(email)),
     signInWithGoogle: async () => {
-        console.log("Initiating Google Sign-In (Redirect Mode)...");
-
-        // Set persistence to local to ensure session survives
-        await setPersistence(authInstance, browserLocalPersistence);
-
-        // We use Redirect for everyone now to avoid popup issues and satisfy user preference.
-        localStorage.setItem('pwa_auth_active', 'true');
-        return signInWithRedirect(authInstance, googleProvider);
+        console.log("🚀 Firebase: signInWithGoogle started");
+        try {
+            // Try popup first as it's the best UX
+            const result = await signInWithPopup(authInstance, googleProvider);
+            console.log("🚀 Firebase: Popup success");
+            return result;
+        } catch (error: any) {
+            console.warn("🚀 Firebase: Popup failed, trying redirect...", error.code);
+            // Fallback to redirect for environments that don't support popups (like some mobile browsers/PWAs)
+            if (
+                error.code === 'auth/popup-blocked' || 
+                error.code === 'auth/operation-not-supported-in-this-environment' ||
+                error.code === 'auth/popup-closed-by-user' ||
+                error.code === 'auth/unauthorized-domain'
+            ) {
+                return signInWithRedirect(authInstance, googleProvider);
+            }
+            throw error;
+        }
     },
     getRedirectResult: () => getRedirectResult(authInstance),
     setPersistence: async (persistenceType: 'local' | 'session') => {
