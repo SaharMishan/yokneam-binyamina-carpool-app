@@ -102,8 +102,8 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onLogoClick, onNavigateToT
     };
 
     return (
-        <header className="fixed top-0 left-0 right-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/60 h-16 z-[60] transition-all shadow-sm">
-            <div className="w-full px-4 sm:px-6 h-full flex items-center justify-between">
+        <header className="fixed top-0 left-0 right-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800/60 min-h-[4rem] h-[calc(4rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] z-[60] transition-all shadow-sm">
+            <div className="w-full px-4 sm:px-6 h-16 flex items-center justify-between">
                 <div 
                     className={`flex items-center gap-3 cursor-pointer group md:order-1 ${dir === 'rtl' ? 'order-2 md:order-1' : 'order-1'}`} 
                     onClick={onLogoClick}
@@ -129,7 +129,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onLogoClick, onNavigateToT
                             {unreadCount > 0 && <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-slate-900 animate-pulse"></span>}
                         </button>
                         {showNotifications && (
-                            <div className={`fixed inset-x-4 top-16 md:absolute md:inset-auto md:top-12 ${dir === 'rtl' ? 'md:left-0' : 'md:right-0'} md:w-[400px] max-h-[80vh] bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-700 overflow-hidden flex flex-col animate-fade-in z-[100]`}>
+                            <div className={`fixed inset-x-4 top-[calc(4rem+env(safe-area-inset-top)+0.5rem)] md:absolute md:inset-auto md:top-12 ${dir === 'rtl' ? 'md:left-0' : 'md:right-0'} md:w-[400px] max-h-[80vh] bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-700 overflow-hidden flex flex-col animate-fade-in z-[100]`}>
                                 <div className="p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 flex flex-row-reverse justify-between items-center shrink-0">
                                     <h3 className="text-sm font-bold text-slate-800 dark:text-white">{t('notifications_title')}</h3>
                                     <div className="flex items-center gap-3">

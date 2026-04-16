@@ -109,7 +109,7 @@ const GlobalNotifier: React.FC = () => {
     };
 
     return (
-        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[100] w-[calc(100%-2rem)] max-w-sm px-4 animate-fade-in">
+        <div className="fixed top-[calc(5rem+env(safe-area-inset-top))] left-1/2 transform -translate-x-1/2 z-[100] w-[calc(100%-2rem)] max-w-sm px-4 animate-fade-in">
             <div className={`${getBgColor()} text-white p-4 rounded-2xl shadow-2xl flex items-start gap-3 border border-white/10 backdrop-blur-md`}>
                 <div className="bg-white/20 p-2 rounded-full shrink-0">
                     <Bell size={20} />

@@ -90,7 +90,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, currentView, setVi
 
     if (isDesktop) {
         return (
-             <div className="flex flex-col h-full w-full bg-white dark:bg-slate-900 pt-16">
+             <div className="flex flex-col h-full w-full bg-white dark:bg-slate-900 pt-[calc(4rem+env(safe-area-inset-top))]">
                 <div className="p-6 pb-2">
                     <InstallButton />
                     <UserProfileSection />
@@ -171,7 +171,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, currentView, setVi
                         animate={{ x: 0 }}
                         exit={{ x: dir === 'rtl' ? '100%' : '-100%' }}
                         transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                        className="relative w-[85%] max-w-xs bg-white dark:bg-slate-900 h-full shadow-2xl flex flex-col"
+                        className="relative w-[85%] max-w-xs bg-white dark:bg-slate-900 h-full shadow-2xl flex flex-col pt-[env(safe-area-inset-top)]"
                     >
                         <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 shrink-0">
                             <div className="flex items-center justify-between mb-8">

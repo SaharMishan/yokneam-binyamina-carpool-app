@@ -227,7 +227,7 @@ const AppContent = () => {
                     onOpenInstall={() => setInstallInstructionsOpen(true)}
                 />
 
-                <main className="flex-1 overflow-y-auto scrollbar-hide pt-16 pb-20 md:pb-6">
+                <main className="flex-1 overflow-y-auto scrollbar-hide pt-[calc(4rem+env(safe-area-inset-top))] pb-20 md:pb-6">
                     <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 py-4">
                         <AnimatePresence mode="wait">
                             <motion.div

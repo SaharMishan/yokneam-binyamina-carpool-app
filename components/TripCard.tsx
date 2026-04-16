@@ -195,9 +195,22 @@ const TripCard: React.FC<TripCardProps> = ({ trip, onEdit, onPostTripClick }) =>
 
             <div className="flex-1 p-5 flex flex-col relative">
                 {hasPendingRequests && (
-                    <div className="mb-4 animate-pulse">
+                    <div 
+                        className="mb-4 animate-pulse cursor-pointer active:scale-95 transition-transform"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                    >
                         <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl px-3.5 py-2 flex items-center justify-between gap-2 shadow-sm">
-                            <div className="flex items-center gap-2"><Bell size={13} className="text-amber-600" /><span className="text-[10px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-tight">בקשות ממתינות ({pendingPassengers.length})</span></div>
+                            <div className="flex items-center gap-2">
+                                <Bell size={13} className="text-amber-600" />
+                                <span className="text-[10px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-tight">
+                                    {pendingPassengers.length > 1 ? `ישנן ${pendingPassengers.length} בקשות ממתינות - לחץ לאישור` : `ישנה בקשה ממתינה - לחץ לאישור`}
+                                </span>
+                            </div>
+                            <ChevronRight size={12} className="text-amber-400" />
                         </div>
                     </div>
                 )}
