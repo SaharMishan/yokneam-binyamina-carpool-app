@@ -44,6 +44,8 @@ const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onSwitchToFor
             // 3. Account exists via Google but has no password set yet
             if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
                 setError(t('error_invalid_credentials'));
+            } else if (err.code === 'auth/unauthorized-domain') {
+                setError(`שגיאת אבטחה: הדומיין ${window.location.hostname} אינו מורשה ב-Firebase Console.`);
             } else if (err.code === 'auth/too-many-requests') {
                 setError(t('error_too_many_requests'));
             } else if (err.code === 'auth/invalid-email') {
@@ -65,9 +67,13 @@ const LoginView: React.FC<LoginViewProps> = ({ onSwitchToRegister, onSwitchToFor
             if (err.code !== 'auth/popup-closed-by-user') {
                 console.error("Google login error:", err.code);
                 
-                // Specific handling for account collision
                 if (err.code === 'auth/account-exists-with-different-credential' || err.code === 'auth/email-already-in-use') {
                     setError(t('error_account_collision'));
+                    return;
+                }
+
+                if (err.code === 'auth/unauthorized-domain') {
+                    setError(`שגיאת אבטחה: הדומיין ${window.location.hostname} אינו מורשה ב-Firebase Console. יש להוסיף אותו לרשימת ה-Authorized Domains.`);
                     return;
                 }
 

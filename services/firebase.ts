@@ -57,32 +57,24 @@ export const cleanEnvValue = (val: any): string => {
  * 2. Ensure VITE_FIREBASE_AUTH_DOMAIN is set to your project's .firebaseapp.com domain
  *    unless you have specifically configured a custom domain for auth.
  */
-const authDomain = cleanEnvValue(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN) || "carpool-yokneam.firebaseapp.com";
-
-// Diagnostic warning for production
-if (typeof window !== 'undefined' && (authDomain.includes('netlify.app') || authDomain.includes('vercel.app'))) {
-    console.warn("⚠️ VITE_FIREBASE_AUTH_DOMAIN is set to a hosting domain. This often breaks Google Sign-In. It should usually be 'carpool-yokneam.firebaseapp.com' or a custom auth domain like 'auth.yourdomain.com'");
-}
+// Determine the best authDomain
+// We use the official firebaseapp.com domain as the primary authDomain.
+// This is the most compatible way and prevents 'unauthorized-domain' errors.
+const authDomain = "carpool-yokneam.firebaseapp.com";
 
 const firebaseConfig = {
   apiKey: cleanEnvValue(import.meta.env.VITE_FIREBASE_API_KEY) || "AIzaSyDPMvgiA-BMTfjpns7CYsfNFrU5PWqnJGw",
   authDomain: authDomain,
-  projectId: cleanEnvValue(import.meta.env.VITE_FIREBASE_PROJECT_ID) || "carpool-yokneam",
-  storageBucket: cleanEnvValue(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET) || "carpool-yokneam.firebasestorage.app",
-  messagingSenderId: cleanEnvValue(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID) || "374315181940",
-  appId: cleanEnvValue(import.meta.env.VITE_FIREBASE_APP_ID) || "1:374315181940:web:e322c995e8c3b25e3eee21",
-  measurementId: cleanEnvValue(import.meta.env.VITE_FIREBASE_MEASUREMENT_ID) || "G-LB4XC4NRZQ"
+  projectId: "carpool-yokneam",
+  storageBucket: "carpool-yokneam.firebasestorage.app",
+  messagingSenderId: "374315181940",
+  appId: "1:374315181940:web:e322c995e8c3b25e3eee21",
+  measurementId: "G-LB4XC4NRZQ"
 };
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
 export const authInstance = getAuth(app);
-
-// CRITICAL: Force local persistence immediately to help iOS/Safari/PWA
-// This ensures the session is saved in localStorage and survives the redirect flow
-setPersistence(authInstance, browserLocalPersistence).catch(err => {
-    console.error("Failed to set auth persistence:", err);
-});
 
 export const dbInstance = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
@@ -139,28 +131,14 @@ export const auth = {
     sendPasswordResetEmail: (email: string) => 
         firebaseSendPasswordResetEmail(authInstance, normalizeEmail(email)),
     signInWithGoogle: async () => {
-        const isPWA = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
-        
-        console.log("Initiating Google Sign-In, PWA mode:", isPWA);
+        console.log("Initiating Google Sign-In (Redirect Mode)...");
 
-        // Set persistence to local to ensure session survives redirect
+        // Set persistence to local to ensure session survives
         await setPersistence(authInstance, browserLocalPersistence);
 
-        if (isPWA) {
-            localStorage.setItem('pwa_auth_active', 'true');
-            return signInWithRedirect(authInstance, googleProvider);
-        }
-        
-        try {
-            return await signInWithPopup(authInstance, googleProvider);
-        } catch (error: any) {
-            if (error.code === 'auth/popup-blocked' || error.code === 'auth/cancelled-popup-request') {
-                console.log("Popup blocked, falling back to Redirect");
-                localStorage.setItem('pwa_auth_active', 'true');
-                return signInWithRedirect(authInstance, googleProvider);
-            }
-            throw error;
-        }
+        // We use Redirect for everyone now to avoid popup issues and satisfy user preference.
+        localStorage.setItem('pwa_auth_active', 'true');
+        return signInWithRedirect(authInstance, googleProvider);
     },
     getRedirectResult: () => getRedirectResult(authInstance),
     setPersistence: async (persistenceType: 'local' | 'session') => {

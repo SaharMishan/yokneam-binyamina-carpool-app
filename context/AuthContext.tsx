@@ -67,36 +67,51 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         let authStateReceived = false;
 
         const maybeFinishLoading = () => {
-            if (isMounted && redirectChecked && authStateReceived && !auth.currentUser) {
-                setLoading(false);
+            // Only finish loading if:
+            // 1. We've checked the redirect result
+            // 2. We've received the initial auth state from Firebase
+            // 3. There is no current user (if there was, onAuthStateChanged would have handled it)
+            if (isMounted && redirectChecked && authStateReceived) {
+                if (!auth.currentUser) {
+                    console.log("🏁 No user found after checks, finishing loading.");
+                    setLoading(false);
+                } else {
+                    console.log("⏳ User exists, waiting for profile sync...");
+                }
             }
         };
 
         // Handle redirect result for mobile Google Sign-In
         const handleRedirect = async () => {
             const isPWAAuth = localStorage.getItem('pwa_auth_active') === 'true';
-            if (isPWAAuth) {
-                console.log("PWA Auth return detected, waiting for result...");
-                setLoading(true);
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
+            
+            if (isPWAAuth || isStandalone) {
+                console.log("Checking for redirect result (PWA/Standalone mode)...");
+                // Don't set loading to true unless we actually have a flag, 
+                // to avoid flickering on every refresh.
+                if (isPWAAuth) setLoading(true);
             }
 
             try {
-                // This is the core fix: catch the result of the redirect
                 const result = await auth.getRedirectResult();
                 if (result?.user && isMounted) {
-                    console.log("Redirect Sign-In Success:", result.user.email);
+                    console.log("✅ Redirect Sign-In Success:", result.user.email);
                     await syncUserProfile(result.user);
+                } else if (isPWAAuth) {
+                    console.log("No redirect result found, but PWA flag was active.");
                 }
             } catch (error: any) {
-                console.error("Redirect Sign-In Error:", error.code, error.message);
-                // If ITP/Safari blocks the cookie, we might get an internal error
+                console.error("❌ Redirect Sign-In Error:", error.code, error.message);
                 if (error.code === 'auth/internal-error' && /iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-                    console.warn("Detected iOS internal auth error - likely ITP related. Custom Auth Domain is required.");
+                    console.warn("Detected iOS internal auth error. This is usually fixed by the Self-Hosted Auth Domain proxy I just implemented.");
                 }
             } finally {
-                localStorage.removeItem('pwa_auth_active');
-                redirectChecked = true;
-                maybeFinishLoading();
+                if (isMounted) {
+                    localStorage.removeItem('pwa_auth_active');
+                    redirectChecked = true;
+                    maybeFinishLoading();
+                }
             }
         };
 
