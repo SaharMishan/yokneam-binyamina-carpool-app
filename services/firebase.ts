@@ -136,21 +136,26 @@ export const auth = {
     sendPasswordResetEmail: (email: string) => 
         firebaseSendPasswordResetEmail(authInstance, normalizeEmail(email)),
     signInWithGoogle: async () => {
-        console.log("🚀 Firebase: signInWithGoogle started");
+        const isStandalone = (window.matchMedia('(display-mode: standalone)').matches) || (navigator as any).standalone;
+        console.log("🚀 Firebase: signInWithGoogle started. PWA Mode:", !!isStandalone, "Host:", window.location.host);
+        
         try {
             // Try popup first as it's the best UX
             const result = await signInWithPopup(authInstance, googleProvider);
             console.log("🚀 Firebase: Popup success");
             return result;
         } catch (error: any) {
-            console.warn("🚀 Firebase: Popup failed, trying redirect...", error.code);
-            // Fallback to redirect for environments that don't support popups (like some mobile browsers/PWAs)
+            console.warn("🚀 Firebase: Popup failed/blocked. Code:", error.code);
+            
+            // Fallback to redirect for environments that don't support popups
             if (
                 error.code === 'auth/popup-blocked' || 
                 error.code === 'auth/operation-not-supported-in-this-environment' ||
                 error.code === 'auth/popup-closed-by-user' ||
-                error.code === 'auth/unauthorized-domain'
+                error.code === 'auth/unauthorized-domain' ||
+                isStandalone
             ) {
+                console.log("🚀 Firebase: Falling back to signInWithRedirect");
                 return signInWithRedirect(authInstance, googleProvider);
             }
             throw error;

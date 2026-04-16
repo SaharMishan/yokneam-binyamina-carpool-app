@@ -94,13 +94,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         let firstAuthStateReceived = false;
 
         // 1. Handle Redirect Result in background
+        console.log("🚀 AuthContext: checking getRedirectResult...");
         auth.getRedirectResult().then(result => {
             if (result?.user && isMounted.current) {
+                console.log("🚀 AuthContext: Redirect success for:", result.user.email);
+                setFirebaseUser(result.user);
+                setIsInitialized(true);
                 syncUserProfile(result.user);
+            } else {
+                console.log("🚀 AuthContext: No redirect result found or no user");
             }
         }).catch(err => {
             if (err.code !== 'auth/popup-closed-by-user') {
-                console.error("AuthContext: Redirect result error", err);
+                console.error("🚀 AuthContext: Redirect result error", err.code, err.message);
             }
         });
 
