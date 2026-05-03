@@ -510,7 +510,7 @@ const AdminDashboard: React.FC = () => {
                                                 <span className="text-[10px] font-bold text-slate-400">28/02/2026</span>
                                             </div>
                                             <ul className="text-xs text-slate-500 dark:text-slate-400 space-y-2 list-none">
-                                                <li className="flex items-start gap-2"><Check size={14} className="text-emerald-500 mt-0.5 shrink-0" /> הוספת חלון בחירת "נקודת איסוף מדויקת" בעת שליחת בקשת הצטרפות.</li>
+                                                <li className="flex items-start gap-2"><Check size={14} className="text-emerald-500 mt-0.5 shrink-0" /> הוספת חלון בחירת "נקודת איסוף מדויקת" בעת הצטרפות לנסיעה.</li>
                                                 <li className="flex items-start gap-2"><Check size={14} className="text-emerald-500 mt-0.5 shrink-0" /> אזור סטטיסטיקות אישי בפרופיל (כמה נסיעות נתתי / כמה נלקחו).</li>
                                             </ul>
                                         </div>

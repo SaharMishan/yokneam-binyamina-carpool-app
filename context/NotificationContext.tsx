@@ -2,9 +2,9 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { db, dbInstance, messagingInstance, cleanEnvValue } from '../services/firebase';
 import { getToken, onMessage } from 'firebase/messaging';
-import { useAuth } from './AuthContext';
+import { useAuth, AuthContext } from './AuthContext';
 import { AppNotification } from '../types';
-import { collection, query, where, onSnapshot, doc, updateDoc, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, updateDoc, orderBy, limit, Timestamp } from 'firebase/firestore';
 
 interface NotificationContextType {
     notifications: AppNotification[];
@@ -22,7 +22,8 @@ interface NotificationContextType {
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const { user } = useAuth();
+    const authContext = useContext(AuthContext);
+    const user = authContext?.user;
     const [notifications, setNotifications] = useState<AppNotification[]>([]);
     const [activeSystemMessage, setActiveSystemMessage] = useState<AppNotification | null>(null);
     const dismissedIds = useRef<Set<string>>(new Set());
@@ -192,6 +193,37 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     const createLocalNotification = async (notif: Omit<AppNotification, 'id'>) => { await db.createNotification(notif); };
     const deleteNotification = async (id: string) => { await db.deleteNotification(id); };
     const clearAllNotifications = async () => { if (user) await db.clearAllNotifications(user.uid); };
+
+    useEffect(() => {
+        if (!user || user.phoneNumber) return;
+
+        const checkAndCreateProfileReminder = async () => {
+            // Check if reminder already exists in the notifications we just loaded
+            const hasReminder = notifications.some(n => n.metadata?.id === 'profile_reminder');
+            
+            if (!hasReminder && initialSyncDone.current) {
+                try {
+                    await db.createNotification({
+                        userId: user.uid,
+                        type: 'info',
+                        title: 'error_self_no_phone',
+                        message: 'profile_incomplete_warning',
+                        isRead: false,
+                        createdAt: Timestamp.now(),
+                        metadata: { 
+                            id: 'profile_reminder',
+                            view: 'profile',
+                            isWarning: true
+                        }
+                    });
+                } catch (e) {
+                    console.error("Failed to create profile reminder:", e);
+                }
+            }
+        };
+
+        checkAndCreateProfileReminder();
+    }, [user, notifications.length]); // Specifically watch user and count variations
 
     return (
         <NotificationContext.Provider value={{ 

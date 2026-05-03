@@ -3,9 +3,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // ===============================================================
-    // Helper Functions
-    // ===============================================================
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -14,63 +11,33 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // Check if the user is an admin
+    function isMaster() {
+      return isAuthenticated() && request.auth.token.email == 'saharmish93@gmail.com';
+    }
+
     function isAdmin() {
-      return isAuthenticated() && (
-        (request.auth.token.email == 'saharmish93@gmail.com') ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true)
+      return isMaster() || (
+        isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true
       );
     }
 
-    // ===============================================================
-    // Domain Validators
-    // ===============================================================
-    function isValidUser(data) {
-      return data.uid is string &&
-             data.displayName is string &&
-             data.displayName.size() > 0;
-    }
-
-    // ===============================================================
-    // Rules
-    // ===============================================================
-
     match /users/{userId} {
-      // Profiles are readable by any authenticated user for trip details
-      allow get, list: if isAuthenticated();
-      
-      // Allow creation of user profile by the owner
-      // We allow setting isAdmin ONLY if the user is an admin already (master bootstrap)
-      allow create: if isOwner(userId) && isValidUser(request.resource.data) &&
-                    (request.resource.data.isAdmin == false || isAdmin());
-      
-      allow update: if (isOwner(userId) || isAdmin()) && 
-                    isValidUser(request.resource.data) &&
-                    // Only admins can change the isAdmin field or other metadata
-                    (request.resource.data.isAdmin == resource.data.isAdmin || isAdmin());
-      
-      allow delete: if isAdmin();
+      allow read: if isAuthenticated();
+      allow create, update: if isOwner(userId) || isMaster();
+      allow delete: if isMaster();
     }
 
     match /trips/{tripId} {
       allow read: if isAuthenticated();
-      
-      allow create: if isAuthenticated() && 
-                    (request.resource.data.driverId == request.auth.uid || isAdmin());
-      
-      allow update: if isAuthenticated() && (
-        resource.data.driverId == request.auth.uid || 
-        isAdmin() ||
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['passengers', 'availableSeats'])
-      );
-      
-      allow delete: if isAuthenticated() && (resource.data.driverId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && (resource.data.driverId == request.auth.uid || isAdmin());
     }
 
     match /notifications/{notifId} {
       allow create: if isAuthenticated();
-      allow read, update, delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow read, update, delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isMaster());
     }
     
     match /system_announcements/{msgId} {

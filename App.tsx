@@ -1,9 +1,9 @@
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { LocalizationProvider, useLocalization } from './context/LocalizationContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { auth as authService } from './services/firebase';
-import { NotificationProvider } from './context/NotificationContext';
+import { NotificationProvider, useNotifications } from './context/NotificationContext';
 import AuthGate from './components/AuthGate';
 import Header from './components/Header';
 import TripList from './components/TripList';
@@ -22,8 +22,11 @@ import InstallInstructions from './components/InstallInstructions';
 import InstallGuide from './components/InstallGuide';
 import { Direction, Trip } from './types';
 import { db } from './services/firebase';
-import { CarFront, Cloud } from 'lucide-react';
+import { CarFront, Cloud, Phone } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { Timestamp } from 'firebase/firestore';
+
+type View = 'home' | 'schedule' | 'about' | 'profile' | 'settings' | 'admin';
 
 const CoolLoader = ({ message }: { message: string }) => (
     <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 overflow-hidden">
@@ -60,15 +63,28 @@ const GlobalBackground = () => (
 const AppContent = () => {
     const { user, loading, firebaseUser } = useAuth();
     const { dir, t } = useLocalization();
+    const { setActiveSystemMessage } = useNotifications();
     const [isSheetOpen, setSheetOpen] = useState(false);
     const [tripToEdit, setTripToEdit] = useState<Trip | null>(null);
     const [isMenuOpen, setMenuOpen] = useState(false);
     const [isReportOpen, setReportOpen] = useState(false);
     const [isInstallInstructionsOpen, setInstallInstructionsOpen] = useState(false);
     const [direction, setDirection] = useState<Direction>(Direction.YOKNEAM_TO_BINYAMINA);
-    const [currentView, setView] = useState('home');
+    const [view, setView] = useState('home');
     const [isCheckingDeepLink, setIsCheckingDeepLink] = useState(false);
     const [canInstall, setCanInstall] = useState(false);
+    const hasPromptedProfile = useRef(false);
+
+    // Current view helper
+    const currentView = view as View;
+
+    // Check for missing phone on load and create a real notification if needed
+    useEffect(() => {
+        if (user && !user.phoneNumber && !hasPromptedProfile.current) {
+            // We'll trust the SideMenu and Bell Notifications to guide the user
+            hasPromptedProfile.current = true;
+        }
+    }, [user]);
 
     // Dynamic Meta Tags for Social Sharing (WhatsApp, etc.)
     useEffect(() => {
@@ -173,7 +189,7 @@ const AppContent = () => {
             case 'profile': return <ProfileView onEditTrip={openSheet} />;
             case 'settings': return <SettingsView />;
             case 'admin': return user.isAdmin ? <AdminDashboard /> : <NotFoundView onBack={() => setView('home')} />;
-            case 'home': return <TripList direction={direction} setDirection={setDirection} onPostTrip={() => openSheet()} onEditTrip={openSheet} />;
+            case 'home': return <TripList direction={direction} setDirection={setDirection} onPostTrip={() => openSheet()} onEditTrip={openSheet} onProfileClick={() => setView('profile')} />;
             default: return <NotFoundView onBack={() => setView('home')} />;
         }
     };
@@ -209,6 +225,7 @@ const AppContent = () => {
                     onMenuClick={() => setMenuOpen(true)} 
                     onLogoClick={() => setView('home')} 
                     onNavigateToTrip={navigateToTrip}
+                    onNavigateToView={setView}
                 />
                 
                 {/* Mobile Menu */}

@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLocalization } from '../context/LocalizationContext';
 import { useNotifications } from '../context/NotificationContext';
 import { AppNotification } from '../types';
-import { Bell, X, CheckCircle2, Megaphone, Sparkles } from 'lucide-react';
+import { Bell, X, CheckCircle2, Megaphone, Sparkles, AlertCircle } from 'lucide-react';
 
 const GlobalNotifier: React.FC = () => {
     const { user } = useAuth();
@@ -33,9 +33,10 @@ const GlobalNotifier: React.FC = () => {
 
     const getSmartMessage = (notif: AppNotification) => {
         if (notif.type === 'invite' && notif.metadata) {
+            const dirKey = notif.metadata.directionKey || notif.metadata.direction;
             return t('notif_invite_msg')
                 .replace('{name}', notif.metadata.driverName)
-                .replace('{direction}', t(notif.metadata.directionKey))
+                .replace('{direction}', t(dirKey))
                 .replace('{time}', notif.metadata.time);
         }
         if (notif.title === 'notif_new_report_title' && notif.metadata) {
@@ -58,12 +59,18 @@ const GlobalNotifier: React.FC = () => {
                     
                     <div className="p-8 flex flex-col items-center text-center">
                         <div className="relative mb-6">
-                            <div className="w-20 h-20 bg-indigo-50 dark:bg-indigo-900/30 rounded-full flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-inner ring-8 ring-indigo-50/50 dark:ring-indigo-900/10">
-                                <Megaphone size={40} className="animate-bounce-slow" />
+                            <div className={`w-20 h-20 ${activeSystemMessage.metadata?.isError ? 'bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 ring-rose-50/50 dark:ring-rose-900/10' : 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 ring-indigo-50/50 dark:ring-indigo-900/10'} rounded-full flex items-center justify-center shadow-inner ring-8`}>
+                                {activeSystemMessage.metadata?.isError ? (
+                                    <AlertCircle size={40} className="animate-pulse" />
+                                ) : (
+                                    <Megaphone size={40} className="animate-bounce-slow" />
+                                )}
                             </div>
-                            <div className="absolute -top-1 -right-1 bg-amber-400 text-white p-1.5 rounded-full shadow-lg animate-pulse">
-                                <Sparkles size={16} />
-                            </div>
+                            {!activeSystemMessage.metadata?.isError && (
+                                <div className="absolute -top-1 -right-1 bg-amber-400 text-white p-1.5 rounded-full shadow-lg animate-pulse">
+                                    <Sparkles size={16} />
+                                </div>
+                            )}
                         </div>
 
                         <h3 className="text-xl font-black text-slate-800 dark:text-white mb-4 leading-tight">
@@ -76,18 +83,37 @@ const GlobalNotifier: React.FC = () => {
                             </p>
                         </div>
                         
-                        <button 
-                            type="button"
-                            onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                confirmSystemMessage();
-                            }}
-                            className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl shadow-xl transition-all flex items-center justify-center gap-2 active:scale-95 shadow-indigo-500/20"
-                        >
-                            <CheckCircle2 size={20} />
-                            {t('confirm')}
-                        </button>
+                        <div className="flex flex-col gap-3 w-full">
+                            <button 
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    if (activeSystemMessage.metadata?.view) {
+                                        (window as any).dispatchViewNavigation?.(activeSystemMessage.metadata.view);
+                                    }
+                                    confirmSystemMessage();
+                                }}
+                                className={`w-full py-4 ${activeSystemMessage.metadata?.isError ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-500/20' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20'} text-white font-black rounded-2xl shadow-xl transition-all flex items-center justify-center gap-2 active:scale-95`}
+                            >
+                                <CheckCircle2 size={20} />
+                                {activeSystemMessage.metadata?.actionLabel || t('confirm')}
+                            </button>
+                            
+                            {activeSystemMessage.metadata?.isProfileWarning && (
+                                <button 
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        confirmSystemMessage();
+                                    }}
+                                    className="w-full py-2 text-slate-400 dark:text-slate-500 font-bold text-xs uppercase tracking-widest hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                                >
+                                    {t('maybe_later')}
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -100,7 +126,8 @@ const GlobalNotifier: React.FC = () => {
         switch (activeToast.type) {
             case 'cancel': return 'bg-red-600';
             case 'approved': 
-            case 'invite_accepted': return 'bg-emerald-600';
+            case 'invite_accepted': 
+            case 'match': return 'bg-emerald-600';
             case 'invite': return 'bg-indigo-600';
             case 'request': return 'bg-amber-600';
             case 'info': return 'bg-blue-600';

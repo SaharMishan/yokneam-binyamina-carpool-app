@@ -133,9 +133,9 @@ const InviteSelectionModal: React.FC<InviteSelectionModalProps> = ({
                                     <div className="w-24 h-24 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mb-6 shadow-xl animate-float">
                                         <CheckCircle2 size={56} />
                                     </div>
-                                    <h3 className="text-2xl font-black text-slate-800 dark:text-white mb-2">ההזמנה נשלחה!</h3>
+                                    <h3 className="text-2xl font-black text-slate-800 dark:text-white mb-2">צורף/ה בהצלחה!</h3>
                                     <p className="text-sm font-bold text-slate-500 dark:text-slate-400 leading-relaxed">
-                                        שלחנו הודעה ל{passengerName}.<br/>ברגע שהוא יאשר, תקבל על כך עדכון.
+                                        צירפנו את {passengerName} לנסיעה שלך.<br/>שלחנו לו/ה עדכון על כך.
                                     </p>
                                 </motion.div>
                             ) : (

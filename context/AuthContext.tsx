@@ -17,11 +17,12 @@ interface AuthContextType {
     sendPasswordReset: (email: string) => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const MASTER_EMAIL = 'saharmish93@gmail.com';
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+    console.log("🛡️ AuthProvider Render");
     const isMounted = React.useRef(true);
     const [user, setUser] = useState<UserProfile | null>(null);
     const [firebaseUser, setFirebaseUser] = useState<any>(auth.currentUser);
@@ -285,6 +286,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
 export const useAuth = () => {
     const context = useContext(AuthContext);
-    if (context === undefined) throw new Error('useAuth error');
+    if (context === undefined) {
+        console.error('useAuth failed: context is undefined. Check if AuthProvider is correctly wrapping the component tree.');
+        throw new Error('useAuth must be used within an AuthProvider');
+    }
     return context;
 };

@@ -19,6 +19,14 @@ const SettingsView: React.FC = () => {
 
     const handleNotificationToggle = async () => {
         const newVal = !notifications;
+        
+        if (newVal && 'Notification' in window && Notification.permission !== 'granted') {
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') {
+                return; // Don't enable if they denied
+            }
+        }
+        
         setNotifications(newVal);
         try {
             await updateProfile({ 
@@ -94,6 +102,21 @@ const SettingsView: React.FC = () => {
                     desc={t('settings_notifications_desc')} 
                     action={<Toggle checked={notifications} onChange={handleNotificationToggle} />} 
                  />
+
+                 {notifications && 'Notification' in window && Notification.permission === 'granted' && (
+                    <button 
+                        onClick={() => {
+                            new Notification(t('app_title'), {
+                                body: 'בדיקת התראות - המערכת עובדת בהצלחה!',
+                                icon: '/logo.svg'
+                            });
+                        }}
+                        className="mx-4 mt-1 mb-3 py-2 px-4 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 text-xs font-bold rounded-xl border border-indigo-100 dark:border-indigo-800/50 flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm"
+                    >
+                        <Bell size={14} />
+                        <span>בדיקת התראות</span>
+                    </button>
+                 )}
                  
                  <SettingItem 
                     icon={Shield} 

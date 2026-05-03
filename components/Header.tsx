@@ -5,15 +5,16 @@ import { useNotifications } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
 import { db, auth } from '../services/firebase';
 import { Direction } from '../types';
-import { Menu, CarFront, Moon, Sun, Globe, Bell, Trash2, Check, X, Megaphone } from 'lucide-react';
+import { Menu, CarFront, Moon, Sun, Globe, Bell, Trash2, Check, X, Megaphone, AlertTriangle } from 'lucide-react';
 
 interface HeaderProps {
     onMenuClick: () => void;
     onLogoClick: () => void;
     onNavigateToTrip: (tripId: string, direction: Direction) => void;
+    onNavigateToView: (view: any) => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onMenuClick, onLogoClick, onNavigateToTrip }) => {
+const Header: React.FC<HeaderProps> = ({ onMenuClick, onLogoClick, onNavigateToTrip, onNavigateToView }) => {
     const { t, isDarkMode, toggleTheme, dir } = useLocalization();
     const { user } = useAuth();
     const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, clearAllNotifications, setActiveSystemMessage } = useNotifications();
@@ -37,19 +38,30 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onLogoClick, onNavigateToT
             const parts = message.split('|');
             message = t(parts[0]).replace('{name}', parts[1]);
         } else if (notif.type === 'invite' && notif.metadata) {
-            message = t('notif_invite_msg').replace('{name}', notif.metadata.driverName).replace('{direction}', t(notif.metadata.directionKey)).replace('{time}', notif.metadata.time);
+            const dirKey = notif.metadata.directionKey || notif.metadata.direction;
+            message = t('notif_invite_msg')
+                .replace('{name}', notif.metadata.driverName)
+                .replace('{direction}', t(dirKey))
+                .replace('{time}', notif.metadata.time);
         } else if (notif.title === 'notif_new_report_title' && notif.metadata) {
             message = t('notif_new_report_msg').replace('{userName}', notif.metadata.userName || '').replace('{reportType}', t(`report_type_${notif.metadata.reportType}`) || '');
         } else { message = t(message) || message; }
 
         const handleNotifClick = () => {
+            markAsRead(notif.id);
+            
+            if (notif.metadata?.view) {
+                onNavigateToView(notif.metadata.view);
+                setShowNotifications(false);
+                return;
+            }
+
             if (notif.type === 'info') {
                 setActiveSystemMessage(notif);
                 setShowNotifications(false);
                 return;
             }
             
-            markAsRead(notif.id);
             if (notif.relatedTripId && notif.metadata?.direction) {
                 onNavigateToTrip(notif.relatedTripId, notif.metadata.direction);
                 setShowNotifications(false);
@@ -86,14 +98,19 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onLogoClick, onNavigateToT
         };
 
         const isActionable = (notif.type === 'request' || notif.type === 'invite') && !notif.isRead;
-        const isInfo = notif.type === 'info';
+        const isInfo = notif.type === 'info' || notif.type === 'match';
+        const isWarning = notif.metadata?.isWarning;
 
         return (
             <div onClick={handleNotifClick} className={`p-4 border-b border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer transition-all relative group ${!notif.isRead ? 'bg-indigo-50/50 dark:bg-indigo-900/10' : ''}`}>
                 <div className="flex justify-between items-start mb-1">
                     <div className="flex items-center gap-2">
-                        {isInfo && <Megaphone size={14} className="text-indigo-600" />}
-                        <h4 className={`text-sm ${!notif.isRead ? 'font-bold text-indigo-700 dark:text-indigo-400' : 'font-semibold text-slate-700 dark:text-slate-300'}`}>{t(notif.title)}</h4>
+                        {isWarning ? (
+                            <AlertTriangle size={14} className="text-amber-600 animate-pulse" fill="currentColor" />
+                        ) : isInfo && (
+                            <Megaphone size={14} className="text-indigo-600" />
+                        )}
+                        <h4 className={`text-sm ${!notif.isRead ? (isWarning ? 'font-bold text-amber-700 dark:text-amber-400' : 'font-bold text-indigo-700 dark:text-indigo-400') : 'font-semibold text-slate-700 dark:text-slate-300'}`}>{t(notif.title)}</h4>
                     </div>
                     <span className="text-[10px] text-slate-400">{notif.createdAt?.toDate().toLocaleTimeString([], { hour: '2-digit', minute:'2-digit' })}</span>
                 </div>

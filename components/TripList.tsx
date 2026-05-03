@@ -4,7 +4,7 @@ import { dbInstance } from '../services/firebase';
 import { Trip, Direction, TripType } from '../types';
 import TripCard from './TripCard';
 import { useLocalization } from '../context/LocalizationContext';
-import { CarFront, Clock, X, Users, UserCheck } from 'lucide-react';
+import { CarFront, Clock, X, Users, UserCheck, Phone } from 'lucide-react';
 import { collection, query, where, onSnapshot, limit } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import TimePickerModal from './TimePickerModal';
@@ -14,6 +14,7 @@ interface TripListProps {
     setDirection: (direction: Direction) => void;
     onPostTrip: () => void;
     onEditTrip: (trip: Trip) => void;
+    onProfileClick?: () => void;
 }
 
 type FilterDay = 'all' | 'today' | 'tomorrow';
@@ -34,7 +35,7 @@ const DaySection = memo(({ title, dayTrips, onEditTrip, onPostTrip }: { title: s
     );
 });
 
-const TripList: React.FC<TripListProps> = ({ direction, setDirection, onPostTrip, onEditTrip }) => {
+const TripList: React.FC<TripListProps> = ({ direction, setDirection, onPostTrip, onEditTrip, onProfileClick }) => {
     const { t } = useLocalization();
     const { user } = useAuth();
     const [trips, setTrips] = useState<Trip[]>([]);

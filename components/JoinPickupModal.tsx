@@ -73,7 +73,7 @@ const JoinPickupModal: React.FC<JoinPickupModalProps> = ({ isOpen, onClose, onCo
                                         value={location}
                                         onChange={(e) => setLocation(e.target.value)}
                                         placeholder={t('pickup_modal_placeholder')}
-                                        className={`w-full p-4 ${dir === 'rtl' ? 'pr-12' : 'pl-12'} bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl font-bold text-sm outline-none focus:border-indigo-600 transition-all text-start`}
+                                        className={`w-full p-4 ${dir === 'rtl' ? 'pr-12' : 'pl-12'} bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl font-bold text-sm outline-none focus:border-indigo-600 transition-all text-start dark:text-white text-slate-800`}
                                         autoFocus
                                     />
                                 </div>

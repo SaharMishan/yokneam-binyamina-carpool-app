@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
-import { db } from '../services/firebase';
+import { db, getTranslatedText } from '../services/firebase';
 import { useLocalization } from '../context/LocalizationContext';
 import { Trip, AppNotification } from '../types';
 import { onSnapshot, collection, query, where, Timestamp, getFirestore, getDocs } from 'firebase/firestore';
@@ -61,25 +61,32 @@ const TripMatchNotifier: React.FC = () => {
                     if (timeDiff <= (ONE_HOUR_MS * 1.5)) {
                         const notifQ = query(
                             collection(dbInstance, 'notifications'),
-                            where('userId', '==', user.uid),
-                            where('relatedTripId', '==', tripId),
-                            where('type', '==', 'match')
+                            where('userId', '==', user.uid)
                         );
                         const existingNotifs = await getDocs(notifQ);
                         
-                        if (existingNotifs.empty) {
+                        const alreadyNotified = existingNotifs.docs.some(doc => {
+                            const data = doc.data();
+                            return data.relatedTripId === tripId && data.type === 'match';
+                        });
+
+                        if (!alreadyNotified) {
                             notifiedIds.current.add(tripId);
                             setNotification({ show: true, tripId: tripId });
                             
+                            const translatedTitle = getTranslatedText('match_found_title');
+                            const translatedMessage = getTranslatedText('match_found_desc');
+
                             createLocalNotification({
                                 userId: user.uid,
                                 type: 'match',
-                                title: 'match_found_title',
-                                message: 'match_found_desc',
+                                title: translatedTitle,
+                                message: translatedMessage,
+                                notification: { title: translatedTitle, body: translatedMessage },
                                 relatedTripId: tripId,
                                 isRead: false,
                                 createdAt: Timestamp.now()
-                            });
+                            } as any);
 
                             setTimeout(() => setNotification(null), 6000);
                         }

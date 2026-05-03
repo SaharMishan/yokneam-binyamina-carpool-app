@@ -2,7 +2,7 @@
 import React, { memo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useLocalization } from '../context/LocalizationContext';
-import { X, Home, Calendar, User, Info, LogOut, ChevronRight, Settings, CarFront, ShieldCheck, Flag, Download } from 'lucide-react';
+import { X, Home, Calendar, User, Info, LogOut, ChevronRight, Settings, CarFront, ShieldCheck, Flag, Download, AlertTriangle } from 'lucide-react';
 import BadgeDisplay from './BadgeDisplay';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -63,26 +63,37 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, currentView, setVi
         return (
             <button 
                 onClick={() => handleNavigation('profile')}
-                className="w-full flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 mt-4 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 hover:border-indigo-200 dark:hover:border-indigo-800 transition-all text-start group active:scale-[0.98] shadow-sm touch-manipulation"
+                className={`w-full flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded-2xl border ${!user.phoneNumber ? 'border-amber-500 shadow-amber-500/10' : 'border-slate-100 dark:border-slate-700'} mt-4 hover:bg-white dark:hover:bg-slate-800 transition-all text-start group active:scale-[0.98] shadow-sm touch-manipulation`}
             >
-                <div className="w-11 h-11 rounded-full bg-indigo-50 dark:bg-indigo-900/30 overflow-hidden flex items-center justify-center text-indigo-600 dark:text-indigo-200 font-bold shadow-md border-2 border-white dark:border-slate-700 shrink-0 group-hover:scale-105 transition-transform">
+                <div className="w-11 h-11 rounded-full bg-indigo-50 dark:bg-indigo-900/30 overflow-hidden flex items-center justify-center text-indigo-600 dark:text-indigo-200 font-bold shadow-md border-2 border-white dark:border-slate-700 shrink-0">
                     {user.photoURL ? (
                         <img src={user.photoURL} alt={user.displayName || ''} className="w-full h-full object-cover" />
                     ) : (
-                        user.displayName?.charAt(0).toUpperCase()
+                        <span className="text-lg">{user.displayName?.charAt(0).toUpperCase()}</span>
                     )}
                 </div>
                 <div className="flex flex-col overflow-hidden flex-1 min-w-0">
-                    <span className="text-[13px] font-black text-slate-800 dark:text-white group-hover:text-indigo-600 transition-colors leading-tight mb-1 break-words">
-                        {user.displayName}
-                    </span>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-[13px] font-black text-slate-800 dark:text-white leading-tight break-words truncate">
+                            {user.displayName}
+                        </span>
+                        {!user.phoneNumber && (
+                            <div className="bg-amber-500 p-0.5 rounded-full shadow-sm animate-pulse shrink-0">
+                                <AlertTriangle size={8} className="text-white" fill="currentColor" />
+                            </div>
+                        )}
+                    </div>
                     <div className="flex flex-col gap-1">
                         <BadgeDisplay userId={user.uid} size="sm" />
-                        <span className="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-tight">{user.phoneNumber}</span>
+                        {user.phoneNumber ? (
+                            <span className="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-tight truncate">
+                                {user.phoneNumber}
+                            </span>
+                        ) : null}
                     </div>
                 </div>
-                <div className="p-1.5 bg-slate-50 dark:bg-slate-700/50 rounded-lg group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/50 transition-colors shrink-0">
-                    {dir === 'rtl' ? <ChevronRight size={14} className="text-slate-400 group-hover:text-indigo-600 rotate-180" /> : <ChevronRight size={14} className="text-slate-400 group-hover:text-indigo-600" />}
+                <div className="p-1.5 bg-slate-50 dark:bg-slate-700/50 rounded-lg shrink-0">
+                    {dir === 'rtl' ? <ChevronRight size={14} className="text-slate-400 rotate-180" /> : <ChevronRight size={14} className="text-slate-400" />}
                 </div>
             </button>
         );
@@ -144,7 +155,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, currentView, setVi
                         <span>{t('logout')}</span>
                     </button>
                     <div className="text-center mt-4 space-y-1">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">v1.9.0 • Yokneam-Binyamina</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">v1.9.1 • Yokneam-Binyamina</p>
                         <p className="text-[9px] font-bold text-slate-400 opacity-60">© All Rights Reserved to Sahar Mishan</p>
                     </div>
                 </div>
@@ -234,7 +245,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, currentView, setVi
                                 <span>{t('logout')}</span>
                             </button>
                             <div className="text-center mt-4 space-y-1">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">v1.9.0 • Yokneam-Binyamina</p>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">v1.9.1 • Yokneam-Binyamina</p>
                                 <p className="text-[9px] font-bold text-slate-400 opacity-60">© All Rights Reserved to Sahar Mishan</p>
                             </div>
                         </div>
