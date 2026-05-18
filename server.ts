@@ -206,7 +206,6 @@ function setupNotificationListener() {
                   title: translatedTitle,
                   body: translatedBody,
                   icon: iconUrl,
-                  badge: iconUrl,
                   tag: change.doc.id,
                   renotify: true,
                   requireInteraction: true,

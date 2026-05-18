@@ -22,7 +22,6 @@ messaging.onBackgroundMessage((payload) => {
   const notificationOptions = {
     body: payload.notification?.body || payload.data?.message || 'התקבלה התראה חדשה',
     icon: 'https://ais-pre-bew2sfftalxeo7ooseqg7w-49268045711.europe-west3.run.app/logo.png',
-    badge: 'https://ais-pre-bew2sfftalxeo7ooseqg7w-49268045711.europe-west3.run.app/logo.png',
     data: payload.data,
     tag: payload.data?.notifId || 'general',
     vibrate: [200, 100, 200],

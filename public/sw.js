@@ -22,7 +22,6 @@ messaging.onBackgroundMessage((payload) => {
   const notificationOptions = {
     body: payload.notification?.body || payload.data?.message || 'התקבלה התראה חדשה',
     icon: 'https://ais-pre-bew2sfftalxeo7ooseqg7w-49268045711.europe-west3.run.app/logo.png',
-    badge: 'https://ais-pre-bew2sfftalxeo7ooseqg7w-49268045711.europe-west3.run.app/logo.png',
     data: payload.data,
     tag: payload.data?.notifId || 'general',
     vibrate: [200, 100, 200],
@@ -60,7 +59,6 @@ self.addEventListener('push', (event) => {
   const options = {
     body: body,
     icon: icon,
-    badge: icon,
     data: { ...data.data, url: url },
     tag: tag,
     vibrate: [200, 100, 200],
@@ -79,7 +77,7 @@ self.addEventListener('push', (event) => {
   );
 });
 
-const CACHE_NAME = 'carpool-v1.9.22';
+const CACHE_NAME = 'carpool-v1.9.23';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
