@@ -116,8 +116,8 @@ function setupNotificationListener() {
   console.log("📡 Starting Firestore Notification Listener...");
   
   // Listen for NEW notifications (created after start)
-  // Use a 30-second buffer to catch any documents that were in-flight during restart
-  const startTime = new Date(Date.now() - 30000);
+  // Use a 2-minute buffer to catch any documents that were in-flight during restart
+  const startTime = new Date(Date.now() - 120000);
   const startTimestamp = Timestamp.fromDate(startTime);
   
   db.collection('notifications')
@@ -127,27 +127,28 @@ function setupNotificationListener() {
         if (change.type === 'added') {
           const data = change.doc.data();
           const userId = data.userId;
+          const notifType = data.type || 'general';
           if (!userId) return;
 
-          console.log(`🔔 New notification document for user: ${userId}`);
+          console.log(`🔔 New [${notifType}] notification for user: ${userId}`);
 
           try {
             const userDoc = await db.collection('users').doc(userId).get();
             if (!userDoc.exists) {
-                console.warn(`⚠️ User document missing for notification: ${userId}`);
+                console.warn(`⚠️ User doc missing: ${userId}`);
                 return;
             }
             const userData = userDoc.data();
             const tokens = userData?.fcmTokens || [];
             if (tokens.length === 0) {
-                console.log(`ℹ️ No FCM tokens for user: ${userId}`);
+                console.log(`ℹ️ No tokens for: ${userId}`);
                 return;
             }
 
             const translatedTitle = translate(data.title || "קארפול יקנעם-בנימינה");
             const translatedBody = translate(data.message || "התראה חדשה");
 
-            console.log(`📤 Sending FCM to ${tokens.length} tokens. Title: ${translatedTitle}`);
+            console.log(`📤 Sending to ${tokens.length} tokens. Title: ${translatedTitle}`);
 
             const message = {
               notification: { 
@@ -156,9 +157,9 @@ function setupNotificationListener() {
               },
               data: { 
                 url: data.relatedTripId ? `/?tripId=${data.relatedTripId}` : (data.url || '/'), 
-                type: data.type || 'general',
+                type: notifType,
                 notifId: change.doc.id,
-                click_action: 'FLUTTER_NOTIFICATION_CLICK' // Legacy support for some Android wrappers
+                sentAt: Date.now().toString()
               },
               tokens: tokens,
               android: {
@@ -169,24 +170,17 @@ function setupNotificationListener() {
                   defaultSound: true,
                   defaultVibrateTimings: true,
                   icon: 'stock_ticker_update',
-                  color: '#4f46e5',
-                  clickAction: 'FLUTTER_NOTIFICATION_CLICK'
+                  color: '#4f46e5'
                 }
               },
               apns: { 
-                headers: {
-                  'apns-priority': '10',
-                },
+                headers: { 'apns-priority': '10' },
                 payload: { 
                   aps: { 
-                    alert: {
-                      title: translatedTitle,
-                      body: translatedBody
-                    },
+                    alert: { title: translatedTitle, body: translatedBody },
                     sound: 'default', 
                     badge: 1, 
-                    'content-available': 1,
-                    category: 'GENERAL'
+                    'content-available': 1
                   } 
                 } 
               },
@@ -195,11 +189,11 @@ function setupNotificationListener() {
                 notification: {
                   title: translatedTitle,
                   body: translatedBody,
-                  icon: '/logo.svg?v=5',
-                  badge: '/logo.svg?v=5',
-                  tag: change.doc.id, // Use unique tag for each notification to avoid overwriting
+                  icon: 'https://ais-pre-bew2sfftalxeo7ooseqg7w-49268045711.europe-west3.run.app/logo.svg?v=5',
+                  badge: 'https://ais-pre-bew2sfftalxeo7ooseqg7w-49268045711.europe-west3.run.app/logo.svg?v=5',
+                  tag: change.doc.id,
                   renotify: true,
-                  requireInteraction: true, // Keep it visible until dismissed on some browsers
+                  requireInteraction: true,
                   data: { url: data.relatedTripId ? `/?tripId=${data.relatedTripId}` : (data.url || '/') }
                 },
                 fcmOptions: {
@@ -209,7 +203,7 @@ function setupNotificationListener() {
             };
 
             const response = await fcm.sendEachForMulticast(message);
-            console.log(`✅ FCM Results: ${response.successCount} success, ${response.failureCount} failure`);
+            console.log(`✅ Result for ${userId}: ${response.successCount} success, ${response.failureCount} failed.`);
             
             if (response.failureCount > 0) {
               const failedTokens: string[] = [];

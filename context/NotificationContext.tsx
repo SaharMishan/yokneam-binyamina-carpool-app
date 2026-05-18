@@ -52,7 +52,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                         const currentToken = await getToken(messagingInstance, { vapidKey, serviceWorkerRegistration: registration });
                         
                         if (currentToken) {
-                            console.log('FCM Token retrieved:', currentToken.substring(0, 10) + '...');
+                            console.log('✅ FCM Token retrieved and being saved');
                             await db.saveDeviceToken(user.uid, currentToken);
                         }
                     }

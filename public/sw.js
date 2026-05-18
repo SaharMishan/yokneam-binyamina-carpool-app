@@ -17,17 +17,22 @@ const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
   console.log('[sw.js] Received background message ', payload);
-  const notificationTitle = payload.notification?.title || 'קארפול יקנעם-בנימינה';
+  
+  const notificationTitle = payload.notification?.title || payload.data?.title || 'קארפול יקנעם-בנימינה';
   const notificationOptions = {
-    body: payload.notification?.body || 'התקבלה התראה חדשה',
+    body: payload.notification?.body || payload.data?.message || 'התקבלה התראה חדשה',
     icon: '/logo.svg?v=5',
     badge: '/logo.svg?v=5',
     data: payload.data,
+    tag: payload.data?.notifId || 'general',
+    vibrate: [200, 100, 200],
+    renotify: true
   };
-  self.registration.showNotification(notificationTitle, notificationOptions);
+
+  return self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
-const CACHE_NAME = 'carpool-v1.9.16';
+const CACHE_NAME = 'carpool-v1.9.17';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -81,18 +86,23 @@ self.addEventListener('fetch', (event) => {
 
 // Handle Notification Click
 self.addEventListener('notificationclick', (event) => {
+  console.log('[sw.js] Notification click Received.');
   event.notification.close();
+
   const urlToOpen = event.notification.data?.url || '/';
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-      // Check if there is already a window open with this app
-      for (let client of windowClients) {
-        if ('focus' in client) {
-          return client.navigate(urlToOpen).then(c => c.focus());
+      // Check if there is already a window open with the same domain
+      for (let i = 0; i < windowClients.length; i++) {
+        const client = windowClients[i];
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          return client.focus().then(() => {
+            if (client.url !== urlToOpen) return client.navigate(urlToOpen);
+          });
         }
       }
-      // If no window is open, open a new one
+      // If no window found, open a new one
       if (clients.openWindow) {
         return clients.openWindow(urlToOpen);
       }
