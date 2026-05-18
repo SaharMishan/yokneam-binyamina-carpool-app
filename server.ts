@@ -94,7 +94,14 @@ const TRANSLATIONS: Record<string, string> = {
 
 function translate(text: string): string {
   if (!text) return text;
-  return TRANSLATIONS[text] || text;
+  const trimmed = text.trim();
+  // Try to find a match for the key or the text itself
+  const match = TRANSLATIONS[trimmed];
+  if (match) return match;
+  
+  // Also check if the text is composed of a translation key + something else
+  // or if it's already translated
+  return trimmed;
 }
 
 /**
@@ -108,8 +115,13 @@ function setupNotificationListener() {
   
   console.log("📡 Starting Firestore Notification Listener...");
   
+  // Listen for NEW notifications (created after start)
+  // Use a 30-second buffer to catch any documents that were in-flight during restart
+  const startTime = new Date(Date.now() - 30000);
+  const startTimestamp = Timestamp.fromDate(startTime);
+  
   db.collection('notifications')
-    .where('createdAt', '>', Timestamp.now())
+    .where('createdAt', '>', startTimestamp)
     .onSnapshot((snapshot: any) => {
       snapshot.docChanges().forEach(async (change: any) => {
         if (change.type === 'added') {
@@ -117,15 +129,25 @@ function setupNotificationListener() {
           const userId = data.userId;
           if (!userId) return;
 
+          console.log(`🔔 New notification document for user: ${userId}`);
+
           try {
             const userDoc = await db.collection('users').doc(userId).get();
-            if (!userDoc.exists) return;
+            if (!userDoc.exists) {
+                console.warn(`⚠️ User document missing for notification: ${userId}`);
+                return;
+            }
             const userData = userDoc.data();
             const tokens = userData?.fcmTokens || [];
-            if (tokens.length === 0) return;
+            if (tokens.length === 0) {
+                console.log(`ℹ️ No FCM tokens for user: ${userId}`);
+                return;
+            }
 
             const translatedTitle = translate(data.title || "קארפול יקנעם-בנימינה");
             const translatedBody = translate(data.message || "התראה חדשה");
+
+            console.log(`📤 Sending FCM to ${tokens.length} tokens. Title: ${translatedTitle}`);
 
             const message = {
               notification: { 
@@ -135,12 +157,32 @@ function setupNotificationListener() {
               data: { 
                 url: data.relatedTripId ? `/?tripId=${data.relatedTripId}` : (data.url || '/'), 
                 type: data.type || 'general',
-                notifId: change.doc.id
+                notifId: change.doc.id,
+                click_action: 'FLUTTER_NOTIFICATION_CLICK' // Legacy support for some Android wrappers
               },
               tokens: tokens,
+              android: {
+                priority: 'high' as const,
+                notification: {
+                  channelId: 'general',
+                  priority: 'max' as const,
+                  defaultSound: true,
+                  defaultVibrateTimings: true,
+                  icon: 'stock_ticker_update',
+                  color: '#4f46e5',
+                  clickAction: 'FLUTTER_NOTIFICATION_CLICK'
+                }
+              },
               apns: { 
+                headers: {
+                  'apns-priority': '10',
+                },
                 payload: { 
                   aps: { 
+                    alert: {
+                      title: translatedTitle,
+                      body: translatedBody
+                    },
                     sound: 'default', 
                     badge: 1, 
                     'content-available': 1,
@@ -155,28 +197,47 @@ function setupNotificationListener() {
                   body: translatedBody,
                   icon: '/logo.svg?v=5',
                   badge: '/logo.svg?v=5',
-                  tag: data.type || 'general',
+                  tag: change.doc.id, // Use unique tag for each notification to avoid overwriting
                   renotify: true,
+                  requireInteraction: true, // Keep it visible until dismissed on some browsers
                   data: { url: data.relatedTripId ? `/?tripId=${data.relatedTripId}` : (data.url || '/') }
+                },
+                fcmOptions: {
+                  link: data.relatedTripId ? `/?tripId=${data.relatedTripId}` : (data.url || '/')
                 }
               }
             };
 
             const response = await fcm.sendEachForMulticast(message);
+            console.log(`✅ FCM Results: ${response.successCount} success, ${response.failureCount} failure`);
+            
             if (response.failureCount > 0) {
               const failedTokens: string[] = [];
-              response.responses.forEach((resp: any, idx: number) => { if (!resp.success) failedTokens.push(tokens[idx]); });
+              response.responses.forEach((resp: any, idx: number) => { 
+                if (!resp.success) {
+                    console.error(`❌ Token ${idx} failed:`, resp.error?.code);
+                    if (resp.error?.code === 'messaging/registration-token-not-registered' || 
+                        resp.error?.code === 'messaging/invalid-registration-token') {
+                        failedTokens.push(tokens[idx]);
+                    }
+                } 
+              });
+              
               if (failedTokens.length > 0) {
-                await db.collection('users').doc(userId).update({ fcmTokens: FieldValue.arrayRemove(...failedTokens) });
+                console.log(`🧹 Removing ${failedTokens.length} stale tokens for user: ${userId}`);
+                await db.collection('users').doc(userId).update({ 
+                    fcmTokens: FieldValue.arrayRemove(...failedTokens) 
+                });
               }
             }
           } catch (err) {
-            console.error(`❌ Push error for ${userId}:`, err);
+            console.error(`❌ Global error sending FCM for ${userId}:`, err);
           }
         }
       });
     }, (error: any) => {
       console.error("❌ Firestore Listener Error:", error);
+      // Wait before reconnecting to prevent rapid cycling on persistent errors
       setTimeout(setupNotificationListener, 10000);
     });
 }

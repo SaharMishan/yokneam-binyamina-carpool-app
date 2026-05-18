@@ -18,13 +18,43 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Received background message ', payload);
   
-  const notificationTitle = payload.notification?.title || 'קארפול יקנעם-בנימינה';
+  // If payload contains 'notification' object, FCM might show it automatically on some browsers.
+  // But we handle it here explicitly to ensure resilience.
+  const notificationTitle = payload.notification?.title || payload.data?.title || 'קארפול יקנעם-בנימינה';
   const notificationOptions = {
-    body: payload.notification?.body || 'התקבלה התראה חדשה',
+    body: payload.notification?.body || payload.data?.message || 'התקבלה התראה חדשה',
     icon: '/logo.svg?v=5',
     badge: '/logo.svg?v=5',
     data: payload.data,
+    tag: payload.data?.notifId || 'general',
+    vibrate: [200, 100, 200],
+    renotify: true
   };
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  return self.registration.showNotification(notificationTitle, notificationOptions);
+});
+
+self.addEventListener('notificationclick', (event) => {
+  console.log('[firebase-messaging-sw.js] Notification click Received.');
+  event.notification.close();
+
+  const urlToOpen = event.notification.data?.url || '/';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+      // Check if there is already a window open with the same domain
+      for (let i = 0; i < windowClients.length; i++) {
+        const client = windowClients[i];
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          return client.focus().then(() => {
+            if (client.url !== urlToOpen) return client.navigate(urlToOpen);
+          });
+        }
+      }
+      // If no window found, open a new one
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    })
+  );
 });
