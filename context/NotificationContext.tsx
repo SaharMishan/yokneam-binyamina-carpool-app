@@ -124,9 +124,11 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                             
                             const options = {
                                 body: translatedBody,
-                                icon: '/logo.svg',
-                                badge: '/logo.svg',
-                                data: { url: notif.relatedTripId ? `/?tripId=${notif.relatedTripId}` : '/' }
+                                icon: '/logo.png',
+                                badge: '/logo.png',
+                                data: { url: notif.relatedTripId ? `/?tripId=${notif.relatedTripId}` : '/' },
+                                vibrate: [100, 50, 100],
+                                requireInteraction: true
                             };
                             
                             if (reg) {

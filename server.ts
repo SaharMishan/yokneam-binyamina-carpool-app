@@ -150,12 +150,17 @@ function setupNotificationListener() {
 
             console.log(`📤 Sending push to ${tokens.length} tokens for user ${userId}. Type: ${notifType}`);
 
+            const BASE_URL = 'https://ais-pre-bew2sfftalxeo7ooseqg7w-49268045711.europe-west3.run.app';
+            const iconUrl = `${BASE_URL}/logo.png`;
+
             const message = {
               notification: { 
                 title: translatedTitle, 
                 body: translatedBody 
               },
               data: { 
+                title: translatedTitle,
+                message: translatedBody,
                 url: data.relatedTripId ? `/?tripId=${data.relatedTripId}` : (data.url || '/'), 
                 type: notifType,
                 notifId: change.doc.id,
@@ -164,7 +169,7 @@ function setupNotificationListener() {
               },
               android: {
                 priority: 'high' as const,
-                ttl: 86400 * 1000, // 1 day
+                ttl: 86400 * 1000,
                 notification: {
                   channelId: 'general',
                   priority: 'max' as const,
@@ -173,7 +178,8 @@ function setupNotificationListener() {
                   defaultVibrateTimings: true,
                   icon: 'stock_ticker_update',
                   color: '#4f46e5',
-                  clickAction: 'FLUTTER_NOTIFICATION_CLICK'
+                  clickAction: 'FLUTTER_NOTIFICATION_CLICK',
+                  image: iconUrl
                 }
               },
               apns: { 
@@ -199,8 +205,8 @@ function setupNotificationListener() {
                 notification: {
                   title: translatedTitle,
                   body: translatedBody,
-                  icon: '/logo.svg?v=5',
-                  badge: '/logo.svg?v=5',
+                  icon: iconUrl,
+                  badge: iconUrl,
                   tag: change.doc.id,
                   renotify: true,
                   requireInteraction: true,

@@ -21,8 +21,8 @@ messaging.onBackgroundMessage((payload) => {
   const notificationTitle = payload.notification?.title || payload.data?.title || 'קארפול יקנעם-בנימינה';
   const notificationOptions = {
     body: payload.notification?.body || payload.data?.message || 'התקבלה התראה חדשה',
-    icon: '/logo.svg?v=5',
-    badge: '/logo.svg?v=5',
+    icon: 'https://ais-pre-bew2sfftalxeo7ooseqg7w-49268045711.europe-west3.run.app/logo.png',
+    badge: 'https://ais-pre-bew2sfftalxeo7ooseqg7w-49268045711.europe-west3.run.app/logo.png',
     data: payload.data,
     tag: payload.data?.notifId || 'general',
     vibrate: [200, 100, 200],
@@ -49,7 +49,7 @@ self.addEventListener('push', (event) => {
 
   const title = data.notification?.title || data.data?.title || data.title || 'קארפול יקנעם-בנימינה';
   const body = data.notification?.body || data.data?.message || data.data?.body || data.body || 'התקבלה התראה חדשה';
-  const icon = data.notification?.icon || data.data?.icon || '/logo.svg?v=5';
+  const icon = data.notification?.icon || data.data?.icon || 'https://ais-pre-bew2sfftalxeo7ooseqg7w-49268045711.europe-west3.run.app/logo.png';
   const url = data.data?.url || data.url || '/';
   const tag = data.data?.notifId || data.tag || 'general';
 
