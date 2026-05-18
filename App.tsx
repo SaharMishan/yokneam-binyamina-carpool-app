@@ -22,11 +22,82 @@ import InstallInstructions from './components/InstallInstructions';
 import InstallGuide from './components/InstallGuide';
 import { Direction, Trip } from './types';
 import { db } from './services/firebase';
-import { CarFront, Cloud, Phone } from 'lucide-react';
+import { Bell, BellOff, CarFront, Cloud, Phone, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Timestamp } from 'firebase/firestore';
 
 type View = 'home' | 'schedule' | 'about' | 'profile' | 'settings' | 'admin';
+
+const NotificationPermissionBanner = () => {
+    const { t, dir } = useLocalization();
+    const { requestPermission } = useNotifications();
+    const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>(
+        typeof window !== 'undefined' ? Notification.permission : 'default'
+    );
+    const [isVisible, setIsVisible] = useState(true);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const checkPermission = () => {
+            setPermissionStatus(Notification.permission);
+        };
+        // Check periodically or on focus
+        window.addEventListener('focus', checkPermission);
+        return () => window.removeEventListener('focus', checkPermission);
+    }, []);
+
+    if (permissionStatus === 'granted' || !isVisible) return null;
+
+    const isDenied = permissionStatus === 'denied';
+
+    return (
+        <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            className="bg-indigo-600 text-white overflow-hidden relative"
+        >
+            <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                    <div className="bg-white/20 p-2 rounded-full hidden sm:block">
+                        {isDenied ? <BellOff className="w-5 h-5" /> : <Bell className="w-5 h-5" />}
+                    </div>
+                    <div>
+                        <p className="text-sm font-bold leading-tight">
+                            {isDenied 
+                                ? "התראות חסומות בהגדרות המכשיר" 
+                                : "הפעל התראות כדי לא לפספס נסיעות"}
+                        </p>
+                        <p className="text-xs opacity-90 mt-0.5">
+                            {isDenied 
+                                ? "כדי לקבל עדכונים, יש לאפשר התראות בהגדרות הדפדפן/אפליקציה" 
+                                : "נודיע לך ברגע שמישהו מפרסם נסיעה או מבקש להצטרף"}
+                        </p>
+                    </div>
+                </div>
+                
+                <div className="flex items-center gap-2 shrink-0">
+                    {!isDenied && (
+                        <button 
+                            onClick={async () => {
+                                const result = await requestPermission();
+                                setPermissionStatus(result);
+                            }}
+                            className="bg-white text-indigo-600 px-3 py-1.5 rounded-lg text-xs font-black shadow-sm active:scale-95 transition-transform"
+                        >
+                            הפעל עכשיו
+                        </button>
+                    )}
+                    <button 
+                        onClick={() => setIsVisible(false)}
+                        className="p-1 hover:bg-white/10 rounded-full transition-colors"
+                    >
+                        <X className="w-4 h-4" />
+                    </button>
+                </div>
+            </div>
+        </motion.div>
+    );
+};
 
 const CoolLoader = ({ message }: { message: string }) => (
     <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 overflow-hidden">
@@ -227,6 +298,8 @@ const AppContent = () => {
                     onNavigateToTrip={navigateToTrip}
                     onNavigateToView={setView}
                 />
+                
+                <NotificationPermissionBanner />
                 
                 {/* Mobile Menu */}
                 <SideMenu 

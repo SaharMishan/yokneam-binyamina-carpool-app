@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useRe
 import { db, dbInstance, messagingInstance, cleanEnvValue } from '../services/firebase';
 import { getToken, onMessage } from 'firebase/messaging';
 import { useAuth, AuthContext } from './AuthContext';
+import { useLocalization } from './LocalizationContext';
 import { AppNotification } from '../types';
 import { collection, query, where, onSnapshot, doc, updateDoc, orderBy, limit, Timestamp } from 'firebase/firestore';
 
@@ -23,6 +24,7 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 
 export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const authContext = useContext(AuthContext);
+    const { t } = useLocalization();
     const user = authContext?.user;
     const [notifications, setNotifications] = useState<AppNotification[]>([]);
     const [activeSystemMessage, setActiveSystemMessage] = useState<AppNotification | null>(null);
@@ -38,40 +40,45 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         }
 
         // Request notification permission and get FCM token
-        if ('Notification' in window && typeof Notification.requestPermission === 'function') {
-            Notification.requestPermission().then(permission => {
-                if (permission === 'granted' && messagingInstance) {
-                    // Get FCM token
+        const requestAndSaveToken = async () => {
+            if (!user || !messagingInstance) return;
+
+            try {
+                if ('Notification' in window && Notification.permission === 'granted') {
                     const vapidKey = cleanEnvValue(import.meta.env.VITE_FIREBASE_VAPID_KEY) || 'BCfWAP95lwggbKfoej-5hlzVMImChjLiEmlwC12_uWQMCMPkBrHhd702SJrJQSmz38wXtknLRBhn_Acoi0WZeLw';
                     
                     if (navigator.serviceWorker) {
-                        navigator.serviceWorker.ready.then((registration) => {
-                            if (!messagingInstance) return;
-                            
-                            getToken(messagingInstance, { vapidKey, serviceWorkerRegistration: registration })
-                                .then((currentToken) => {
-                                    if (currentToken) {
-                                        db.saveDeviceToken(user.uid, currentToken).catch(console.error);
-                                    }
-                                }).catch((err) => {
-                                    const errMsg = err?.message || "";
-                                    const isExpectedError = err.code === 'messaging/unsupported-browser' || 
-                                                           errMsg.includes('messaging is not available') || 
-                                                           errMsg.includes('Service messaging is not available') ||
-                                                           errMsg.includes('permission-denied');
-                                    
-                                    if (!isExpectedError) {
-                                        console.error('An error occurred while retrieving token. ', err);
-                                    }
-                                });
-                        }).catch(err => {
-                            console.warn('Service worker not ready for messaging:', err);
-                        });
+                        const registration = await navigator.serviceWorker.ready;
+                        const currentToken = await getToken(messagingInstance, { vapidKey, serviceWorkerRegistration: registration });
+                        
+                        if (currentToken) {
+                            console.log('FCM Token retrieved:', currentToken.substring(0, 10) + '...');
+                            await db.saveDeviceToken(user.uid, currentToken);
+                        }
                     }
                 }
-            }).catch(err => {
-                console.warn('Notification permission request failed:', err);
-            });
+            } catch (err: any) {
+                const errMsg = err?.message || "";
+                const isExpectedError = err.code === 'messaging/unsupported-browser' || 
+                                       errMsg.includes('messaging is not available') || 
+                                       errMsg.includes('Service messaging is not available') ||
+                                       errMsg.includes('permission-denied');
+                
+                if (!isExpectedError) {
+                    console.error('An error occurred while retrieving token. ', err);
+                }
+            }
+        };
+
+        if ('Notification' in window && typeof Notification.requestPermission === 'function') {
+            if (Notification.permission === 'granted') {
+                requestAndSaveToken();
+            } else if (Notification.permission === 'default') {
+                // We ask only once automatically, better to have a button in settings
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') requestAndSaveToken();
+                });
+            }
         }
 
         // Listen for foreground messages
@@ -109,18 +116,20 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                         // Trigger native notification if browser supports it and it's not a read notif
                         if (!notif.isRead && 'Notification' in window && Notification.permission === 'granted') {
                             const reg = (navigator as any).serviceWorker?.ready;
-                            const title = notif.title; // Translating on display
+                            const translatedTitle = t(notif.title);
+                            const translatedBody = t(notif.message.includes('|') ? notif.message.split('|')[1] : notif.message);
+                            
                             const options = {
-                                body: notif.message.includes('|') ? notif.message.split('|')[1] : notif.message,
+                                body: translatedBody,
                                 icon: '/logo.svg',
                                 badge: '/logo.svg',
                                 data: { url: notif.relatedTripId ? `/?tripId=${notif.relatedTripId}` : '/' }
                             };
-
+                            
                             if (reg) {
-                                reg.then((r: any) => r.showNotification(title, options));
+                                reg.then((r: any) => r.showNotification(translatedTitle, options));
                             } else {
-                                new Notification(title, options);
+                                new Notification(translatedTitle, options);
                             }
                         }
                     }
@@ -137,7 +146,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
             unsubscribe();
             if (unsubscribeMessaging) unsubscribeMessaging();
         };
-    }, [user]);
+    }, [user, messagingInstance]);
 
     useEffect(() => {
         if (!user || user.isAdmin) {
@@ -206,8 +215,8 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                     await db.createNotification({
                         userId: user.uid,
                         type: 'info',
-                        title: 'error_self_no_phone',
-                        message: 'profile_incomplete_warning',
+                        title: t('error_self_no_phone'),
+                        message: t('profile_incomplete_warning'),
                         isRead: false,
                         createdAt: Timestamp.now(),
                         metadata: { 
