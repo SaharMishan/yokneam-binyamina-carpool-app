@@ -148,7 +148,7 @@ function setupNotificationListener() {
             const translatedTitle = translate(data.title || "קארפול יקנעם-בנימינה");
             const translatedBody = translate(data.message || "התראה חדשה");
 
-            console.log(`📤 Sending to ${tokens.length} tokens. Title: ${translatedTitle}`);
+            console.log(`📤 Sending push to ${tokens.length} tokens for user ${userId}. Type: ${notifType}`);
 
             const message = {
               notification: { 
@@ -159,47 +159,61 @@ function setupNotificationListener() {
                 url: data.relatedTripId ? `/?tripId=${data.relatedTripId}` : (data.url || '/'), 
                 type: notifType,
                 notifId: change.doc.id,
-                sentAt: Date.now().toString()
+                sentAt: Date.now().toString(),
+                click_action: 'FLUTTER_NOTIFICATION_CLICK' 
               },
-              tokens: tokens,
               android: {
                 priority: 'high' as const,
+                ttl: 86400 * 1000, // 1 day
                 notification: {
                   channelId: 'general',
                   priority: 'max' as const,
+                  sticky: false,
                   defaultSound: true,
                   defaultVibrateTimings: true,
                   icon: 'stock_ticker_update',
-                  color: '#4f46e5'
+                  color: '#4f46e5',
+                  clickAction: 'FLUTTER_NOTIFICATION_CLICK'
                 }
               },
               apns: { 
-                headers: { 'apns-priority': '10' },
+                headers: { 
+                  'apns-priority': '10',
+                  'apns-push-type': 'alert'
+                },
                 payload: { 
                   aps: { 
                     alert: { title: translatedTitle, body: translatedBody },
                     sound: 'default', 
                     badge: 1, 
-                    'content-available': 1
+                    'content-available': 1,
+                    category: 'GENERAL'
                   } 
                 } 
               },
               webpush: {
-                headers: { Urgency: 'high' },
+                headers: { 
+                  Urgency: 'high',
+                  TTL: '86400'
+                },
                 notification: {
                   title: translatedTitle,
                   body: translatedBody,
-                  icon: 'https://ais-pre-bew2sfftalxeo7ooseqg7w-49268045711.europe-west3.run.app/logo.svg?v=5',
-                  badge: 'https://ais-pre-bew2sfftalxeo7ooseqg7w-49268045711.europe-west3.run.app/logo.svg?v=5',
+                  icon: '/logo.svg?v=5',
+                  badge: '/logo.svg?v=5',
                   tag: change.doc.id,
                   renotify: true,
                   requireInteraction: true,
-                  data: { url: data.relatedTripId ? `/?tripId=${data.relatedTripId}` : (data.url || '/') }
+                  data: { url: data.relatedTripId ? `/?tripId=${data.relatedTripId}` : (data.url || '/') },
+                  actions: [
+                    { action: 'open', title: 'צפה בפרטים' }
+                  ]
                 },
                 fcmOptions: {
                   link: data.relatedTripId ? `/?tripId=${data.relatedTripId}` : (data.url || '/')
                 }
-              }
+              },
+              tokens: tokens
             };
 
             const response = await fcm.sendEachForMulticast(message);

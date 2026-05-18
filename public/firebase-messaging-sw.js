@@ -18,8 +18,6 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Received background message ', payload);
   
-  // If payload contains 'notification' object, FCM might show it automatically on some browsers.
-  // But we handle it here explicitly to ensure resilience.
   const notificationTitle = payload.notification?.title || payload.data?.title || 'קארפול יקנעם-בנימינה';
   const notificationOptions = {
     body: payload.notification?.body || payload.data?.message || 'התקבלה התראה חדשה',
@@ -28,10 +26,50 @@ messaging.onBackgroundMessage((payload) => {
     data: payload.data,
     tag: payload.data?.notifId || 'general',
     vibrate: [200, 100, 200],
-    renotify: true
+    renotify: true,
+    requireInteraction: true
   };
 
   return self.registration.showNotification(notificationTitle, notificationOptions);
+});
+
+// Handle generic push events as a fallback
+self.addEventListener('push', (event) => {
+  console.log('[firebase-messaging-sw.js] Push event received', event);
+  
+  let data = {};
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (e) {
+      console.warn('[firebase-messaging-sw.js] Push event data was not JSON:', event.data.text());
+      data = { notification: { title: 'קארפול יקנעם-בנימינה', body: event.data.text() } };
+    }
+  }
+
+  const title = data.notification?.title || data.data?.title || data.title || 'קארפול יקנעם-בנימינה';
+  const body = data.notification?.body || data.data?.message || data.data?.body || data.body || 'התקבלה התראה חדשה';
+  const icon = data.notification?.icon || data.data?.icon || '/logo.svg?v=5';
+  const url = data.data?.url || data.url || '/';
+  const tag = data.data?.notifId || data.tag || 'general';
+
+  const options = {
+    body: body,
+    icon: icon,
+    badge: icon,
+    data: { ...data.data, url: url },
+    tag: tag,
+    vibrate: [200, 100, 200],
+    renotify: true,
+    requireInteraction: true,
+    actions: [{ action: 'open', title: 'פתח אפליקציה' }]
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(title, options)
+      .then(() => console.log('[firebase-messaging-sw.js] Notification shown'))
+      .catch(err => console.error('[firebase-messaging-sw.js] Notification error:', err))
+  );
 });
 
 self.addEventListener('notificationclick', (event) => {

@@ -32,7 +32,53 @@ messaging.onBackgroundMessage((payload) => {
   return self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
-const CACHE_NAME = 'carpool-v1.9.17';
+// Handle generic push events as a fallback
+self.addEventListener('push', (event) => {
+  console.log('[sw.js] Push event received', event);
+  
+  let data = {};
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (e) {
+      console.warn('[sw.js] Push event data was not JSON:', event.data.text());
+      // Handle simple text if needed
+      data = { notification: { title: 'קארפול יקנעם-בנימינה', body: event.data.text() } };
+    }
+  }
+
+  console.log('[sw.js] Processing push data:', data);
+  
+  // Extract title and body from various possible locations in FCM payload
+  const title = data.notification?.title || data.data?.title || data.title || 'קארפול יקנעם-בנימינה';
+  const body = data.notification?.body || data.data?.message || data.data?.body || data.body || 'התקבלה התראה חדשה';
+  const icon = data.notification?.icon || data.data?.icon || '/logo.svg?v=5';
+  const url = data.data?.url || data.url || '/';
+  const tag = data.data?.notifId || data.tag || 'general';
+
+  const options = {
+    body: body,
+    icon: icon,
+    badge: icon,
+    data: { ...data.data, url: url },
+    tag: tag,
+    vibrate: [200, 100, 200],
+    renotify: true,
+    requireInteraction: true,
+    actions: [
+      { action: 'open', title: 'פתח אפליקציה' }
+    ]
+  };
+
+  // Vital: use event.waitUntil to keep the service worker alive
+  event.waitUntil(
+    self.registration.showNotification(title, options)
+      .then(() => console.log('[sw.js] Notification shown successfully'))
+      .catch((err) => console.error('[sw.js] Failed to show notification:', err))
+  );
+});
+
+const CACHE_NAME = 'carpool-v1.9.20';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

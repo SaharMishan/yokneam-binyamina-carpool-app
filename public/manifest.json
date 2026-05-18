@@ -21,6 +21,7 @@
   "scope": "/",
   "description": "אפליקציית קארפול קהילתית בין יקנעם לבנימינה",
   "categories": ["transportation", "productivity"],
+  "gcm_sender_id": "103953800507",
   "shortcuts": [
     {
       "name": "נסיעות חדשות",

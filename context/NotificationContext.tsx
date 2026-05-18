@@ -49,6 +49,9 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
                     
                     if (navigator.serviceWorker) {
                         const registration = await navigator.serviceWorker.ready;
+                        // Force update check
+                        registration.update();
+                        
                         const currentToken = await getToken(messagingInstance, { vapidKey, serviceWorkerRegistration: registration });
                         
                         if (currentToken) {
